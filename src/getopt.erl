@@ -2,27 +2,34 @@
 %%% @author Juan Jose Comellas <jcomellas@novamens.com>
 %%% @copyright (C) 2009, Novamens SA (http://www.novamens.com)
 %%% @doc Parses command line options with a format similar to that of GNU getopt.
+%%% @end
 %%%-------------------------------------------------------------------
 -module(getopt).
 
+%% @headerfile getopt.hrl
 -include("getopt.hrl").
 
 -define(TAB_LENGTH, 8).
 -define(HELP_INDENTATION, 4 * ?TAB_LENGTH).
 
--type option()       :: atom() | {atom(), any()}.
--type option_spec()  :: [#option{}].
--type option_list()  :: [option()].
--type arg_list()     :: [atom() | binary() | boolean() | float() | integer() | string()].
+%% @type option()      = atom() | {atom(), getopt_arg()}. Option type and optional default argument.
+-type option()        :: atom() | {atom(), getopt_arg()}.
+%% @type option_spec() = [#option{}]. Command line options specification.
+-type option_spec()   :: [#option{}].
+%% @type option_list() = [option()]. List of option types.
+-type option_list()   :: [option()].
+%% @type arg_list()    = [getopt_arg()]. List of arguments returned to the calling function.
+-type arg_list()      :: [getopt_arg()].
 
 -export([parse/2, usage/2]).
 
 
 -spec parse(option_spec(), [string()]) -> option_list().
 %%--------------------------------------------------------------------
-%% @doc Parse the command line options and arguments returning a list of tuples
-%%      and/or atoms using the Erlang convention for sending options to a
-%%      function.
+%% @spec parse(OptSpec::option_spec(), Args::[string()]) -> option_list().
+%% @doc  Parse the command line options and arguments returning a list of tuples
+%%       and/or atoms using the Erlang convention for sending options to a
+%%       function.
 %%--------------------------------------------------------------------
 parse(OptSpec, Args) ->
     catch parse(OptSpec, [], [], Args).
@@ -157,8 +164,9 @@ to_type(_Type, Arg) ->
 
 -spec usage(option_spec(), string()) -> ok.
 %%--------------------------------------------------------------------
-%% @doc Show a message on stdout indicating the command line options and
-%%      arguments that are supported by the program.
+%% @spec usage(OptSpec :: option_spec(), ProgramName :: string()) -> ok.
+%% @doc  Show a message on stdout indicating the command line options and
+%%       arguments that are supported by the program.
 %%--------------------------------------------------------------------
 usage(OptSpec, ProgramName) ->
     io:format("Usage: ~s~s~n~n~s~n", [ProgramName, usage_cmd_line(OptSpec), usage_options(OptSpec)]).
