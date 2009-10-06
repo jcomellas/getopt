@@ -3,25 +3,31 @@ ERL=erl
 ERLC=erlc -I include -v -o ebin
 SOURCES=src/*.erl
 EPATH=-pa ebin
-DOC_OPTS={dir, \"doc\"}, {source_path, [\"include\", \"src\"]}
+DOC_OPTS={dir, \"doc\"}, {includes, [\"include\"]}, {source_path, [\"include\", \"src\"]}
 
 all:
 	@mkdir -p ebin
 	$(ERL) $(EPATH) -make
 
-run:
+run: all
 	$(ERL) -sname "$(PROJECT)" $(EPATH)
 
 test: all
 	$(ERL) -noshell $(EPATH) -s $(PROJECT)_test test -s init stop
 
-edoc: all
+doc: all
 	$(ERL) -noshell $(EPATH) \
-		-eval "edoc:files([string:tokens(\"src/getopt.erl\", \" \")], [$(DOC_OPTS)])" \
+		-eval "edoc:files(filelib:wildcard(\"$(SOURCES)\"), [$(DOC_OPTS)])" \
 		-s init stop
-
 
 clean:
 	rm -fv ebin/*.beam
+	rm -fv erl_crash.dump ebin/erl_crash.dump
+
+distclean:
+	rm -fv ebin/*.beam
 	rm -fv doc/*
 	rm -fv erl_crash.dump ebin/erl_crash.dump
+
+docclean:
+	rm -fv doc/*

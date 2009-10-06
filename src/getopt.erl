@@ -6,8 +6,8 @@
 %%%-------------------------------------------------------------------
 -module(getopt).
 
-%% @headerfile getopt.hrl
 -include("getopt.hrl").
+%% @headerfile "getopt.hrl"
 
 -define(TAB_LENGTH, 8).
 -define(HELP_INDENTATION, 4 * ?TAB_LENGTH).

@@ -1,16 +1,14 @@
-%%%-------------------------------------------------------------------
-%%% @author Juan Jose Comellas <jcomellas@novamens.com>
-%%% @copyright (C) 2009, Novamens SA (http://www.novamens.com)
-%%% @doc Records used by the getopt module.
-%%%-------------------------------------------------------------------
-
-%% @doc Atom indicating the data type that an argument can be converted to.
+%% @type getopt_arg_type() = 'atom' | 'binary' | 'bool' | 'float' | 'integer' | 'string'.
+%% Atom indicating the data type that an argument can be converted to.
 -type getopt_arg_type() :: 'atom' | 'binary' | 'boolean' | 'float' | 'integer' | 'string'.
-%% @doc Data type that an argument can be converted to.
+%% @type getopt_arg()      = atom() | binary() | bool() | float() | integer() | string().
+%% Data type that an argument can be converted to.
 -type getopt_arg()      :: atom() | binary() | boolean() | float() | integer() | string().
-%% @@doc Argument specification.
+%% @type getopt_arg_spec() = getopt_arg_type() | {getopt_arg_type(), getopt_arg()} | help | undefined.
+%% Argument specification.
 -type getopt_arg_spec() :: getopt_arg_type() | {getopt_arg_type(), getopt_arg()} | help | undefined.
 
+%% @doc Record that defines the option specifications.
 -record(option, {
           %% @doc Name of the option
           name              :: atom(),
