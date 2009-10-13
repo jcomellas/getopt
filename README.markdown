@@ -24,7 +24,7 @@ Usage
 
 The *getopt* module provides two functions:
 
-    parse([#option{}], Args :: [string()]) -> {ok, {Options, NonOptionArgs}} | {error, {Reason, Data}}
+    parse([#option{}], Args :: string() | [string()]) -> {ok, {Options, NonOptionArgs}} | {error, {Reason, Data}}
     usage([#option{}], ProgramName :: string()) -> ok
 
 The ``parse/2`` function receives a list of ``option`` records (defined in
@@ -102,19 +102,19 @@ e.g. For a program named ex1.escript with the following option specifications:
                 }
         ].
 
-And this command line invocation:
+And this command line:
 
-    $ ./ex1.escript -h myhost --port 1000 -x myfile.txt dummy1 dummy2
+    Args = "-h myhost --port 1000 -x myfile.txt dummy1 dummy2"
 
-The arguments would be:
+Which could also be passed in the format the ``main/1`` function receives the arguments in escripts:
 
     Args = ["-h", "myhost", "--port", "1000", "-x", "myfile.txt", "dummy1", "dummy2"].
 
-So, the call to ``getopt:parse/2``:
+The call to ``getopt:parse/2``:
 
     > getopt:parse(OptSpec, Args).
 
-Would return:
+Will return:
 
     {ok,{[{host,"myhost"},
           {port,1000},
@@ -125,11 +125,11 @@ Would return:
 
 Also, the call to ``getopt:usage/2``:
 
-    > getopt:usage(OptSpec, "ex1.escript").
+    > getopt:usage(OptSpec, "ex1").
 
-Would show on *stdout*:
+Will show (on *stdout*):
 
-    Usage: ex1.escript [-h <host>] [-p <port>] [--dbname <dbname>] [-x] <file>
+    Usage: ex1 [-h <host>] [-p <port>] [--dbname <dbname>] [-x] <file>
 
       -h, --host                    Database server host
       -p, --port                    Database server port

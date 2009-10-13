@@ -21,15 +21,21 @@
 -export([parse/2, usage/2]).
 
 
--spec parse([option_spec()], [string()]) -> {ok, {[option()], [string()]}} | {error, {Reason :: atom(), Data :: any()}}.
+-spec parse([option_spec()], string() | [string()]) -> {ok, {[option()], [string()]}} | {error, {Reason :: atom(), Data :: any()}}.
 %%--------------------------------------------------------------------
-%% @spec parse(OptSpecList::[option_spec()], Args::[string()]) -> [option()].
+%% @spec parse(OptSpecList::[option_spec()], Args::string() | [string()]) -> [option()].
 %% @doc  Parse the command line options and arguments returning a list of tuples
 %%       and/or atoms using the Erlang convention for sending options to a
 %%       function.
 %%--------------------------------------------------------------------
-parse(OptSpecList, Args) ->
+parse(OptSpecList, CmdLine) ->
     try
+        Args = if
+                   is_integer(hd(CmdLine)) ->
+                       string:tokens(CmdLine, " \t\n");
+                   true ->
+                       CmdLine
+               end,
         parse(OptSpecList, [], [], 0, Args)
     catch
         throw: {error, {_Reason, _Data}} = Error ->
