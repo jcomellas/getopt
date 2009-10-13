@@ -28,11 +28,13 @@ Usage
 
 The *getopt* module provides two functions:
 
-    parse([#option{}], Args :: string() | [string()]) -> {ok, {Options, NonOptionArgs}} | {error, {Reason, Data}}
+    parse([#option{}], Args :: string() | [string()]) ->
+        {ok, {Options, NonOptionArgs}} | {error, {Reason, Data}}
+
     usage([#option{}], ProgramName :: string()) -> ok
 
-The ``parse/2`` function receives a list of ``option`` records (defined in
-``getopt.hrl``) with the command line option specifications. The ``option``
+The ``parse/2`` function receives a list of ``#option{}`` records (defined in
+``getopt.hrl``) with the command line option specifications. The ``#option{}``
 record has the following elements:
 
     -record(option, {
@@ -48,10 +50,7 @@ The fields of the record are:
   - ``name``: name of the option.
   - ``short``: character for the short option (e.g. $i for -i).
   - ``long``: string for the long option (e.g. "info" for --info).
-  - ``arg``: data type the argument will be converted to with an optional
-             default value. It can either be an atom() (one of: 'atom',
-             'binary', 'boolean', 'float', 'integer', 'string') or a tuple with
-             an atom() and the default value for that argument.
+  - ``arg``: data type the argument will be converted to with an optional default value. It can either be an atom() (one of: 'atom', 'binary', 'boolean', 'float', 'integer', 'string') or a tuple with an atom() and the default value for that argument.
   - ``help``: help message that is shown for the option when usage/2 is called.
 
 The second parameter holds the list of arguments as passed to the ``main/1``
@@ -75,7 +74,7 @@ added to the list of options. For the example given above we could get something
 like ``{port, 5432}``. The non-option arguments are just a list of strings with
 all the arguments that did not have corresponding options.
 
-e.g. For a program named ex1.escript with the following option specifications:
+e.g. For a program named ``ex1.escript`` with the following option specifications:
 
     OptSpec =
         [
@@ -116,7 +115,7 @@ Which could also be passed in the format the ``main/1`` function receives the ar
 
 The call to ``getopt:parse/2``:
 
-    > getopt:parse(OptSpec, Args).
+    getopt:parse(OptSpec, Args).
 
 Will return:
 
@@ -129,7 +128,7 @@ Will return:
 
 Also, the call to ``getopt:usage/2``:
 
-    > getopt:usage(OptSpec, "ex1").
+    getopt:usage(OptSpec, "ex1").
 
 Will show (on *stdout*):
 
