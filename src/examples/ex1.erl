@@ -9,6 +9,7 @@
 %%% retrieved from: http://www.opensource.org/licenses/bsd-license.php
 %%%-------------------------------------------------------------------
 -module(ex1).
+-author('Juan Jose Comellas <jcomellas@novamens.com>').
 
 -include("include/getopt.hrl").
 
