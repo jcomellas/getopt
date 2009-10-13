@@ -1,0 +1,2 @@
+* Add support for non-option arguments where the first character is '-'.
+  e.g. For "test -a -- -b" "-b" should be interpreted as a non option argument.
