@@ -7,16 +7,19 @@ DOC_OPTS={dir, \"doc\"}, {includes, [\"include\"]}, {source_path, [\"include\", 
 
 all:
 	@mkdir -p ebin
-	$(ERL) $(EPATH) -make
+	@$(ERL) $(EPATH) -make
 
 run: all
 	$(ERL) -sname "$(PROJECT)" $(EPATH)
 
 test: all
-	$(ERL) -noshell $(EPATH) -s $(PROJECT)_test test -s init stop
+	@$(ERL) -noshell $(EPATH) -s $(PROJECT)_test test -s init stop
+
+examples: all
+	@$(ERL) -noshell $(EPATH) -s ex1 test -s init stop
 
 doc: all
-	$(ERL) -noshell $(EPATH) \
+	@$(ERL) -noshell $(EPATH) \
 		-eval "edoc:files(filelib:wildcard(\"$(SOURCES)\"), [$(DOC_OPTS)])" \
 		-s init stop
 
