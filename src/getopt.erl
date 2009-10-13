@@ -10,7 +10,8 @@
 %% @headerfile "getopt.hrl"
 
 -define(TAB_LENGTH, 8).
--define(HELP_INDENTATION, 3 * ?TAB_LENGTH).
+%% Indentation of the help messages in number of tabs.
+-define(INDENTATION, 3).
 
 %% @type option() = atom() | {atom(), getopt_arg()}. Option type and optional default argument.
 -type option() :: atom() | {atom(), getopt_arg()}.
@@ -226,7 +227,7 @@ usage_options([], Acc) ->
 %%      with the correct indentation.
 add_option_help(#option{help = Help}, Prefix, Acc) when is_list(Help), Help =/= [] ->
     FlatPrefix = lists:flatten(Prefix),
-    case (?HELP_INDENTATION - 2 - length(FlatPrefix)) of
+    case ((?INDENTATION * ?TAB_LENGTH) - 2 - length(FlatPrefix)) of
         TabSize when TabSize > 0 ->
             Tab = lists:duplicate(ceiling(TabSize / ?TAB_LENGTH), $\t),
             [[$\s, $\s, FlatPrefix, Tab, Help, $\n] | Acc];
