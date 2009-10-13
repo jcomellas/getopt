@@ -46,7 +46,8 @@ parse(OptSpecList, CmdLine) ->
             Error
     end.
 
--spec parse([option_spec()], [option()], [string()], integer(), [string()]) -> {ok, {[option()], [string()]}} | {error, {Reason :: atom(), Data:: any()}}.
+-spec parse([option_spec()], [option()], [string()], integer(), [string()]) ->
+    {ok, {[option()], [string()]}} | {error, {Reason :: atom(), Data:: any()}}.
 %% Process long options.
 parse(OptSpecList, OptAcc, ArgAcc, ArgPos, [[$-, $- | LongName] = OptStr | Tail]) ->
     {Option, Tail1} = get_option(OptSpecList, OptStr, LongName, #option.long, Tail),
@@ -57,9 +58,11 @@ parse(OptSpecList, OptAcc, ArgAcc, ArgPos, [[$-, ShortName] = OptStr | Tail]) ->
     parse(OptSpecList, [Option | OptAcc], ArgAcc, ArgPos, Tail1);
 %% Process multiple short options with no argument.
 parse(OptSpecList, OptAcc, ArgAcc, ArgPos, [[$- | ShortNameList] = OptStr | Tail]) ->
-    NewOptAcc = lists:foldl(fun (ShortName, OptAcc1) ->
-                                    [get_option_no_arg(OptSpecList, OptStr, ShortName, #option.short) | OptAcc1]
-                            end, OptAcc, ShortNameList),
+    NewOptAcc =
+        lists:foldl(
+          fun (ShortName, OptAcc1) ->
+                  [get_option_no_arg(OptSpecList, OptStr, ShortName, #option.short) | OptAcc1]
+          end, OptAcc, ShortNameList),
     parse(OptSpecList, NewOptAcc, ArgAcc, ArgPos, Tail);
 %% Process non-option arguments.
 parse(OptSpecList, OptAcc, ArgAcc, ArgPos, [Arg | Tail]) ->
@@ -182,7 +185,8 @@ to_type(_Type, Arg) ->
 %%       arguments that are supported by the program.
 %%--------------------------------------------------------------------
 usage(OptSpecList, ProgramName) ->
-    io:format("Usage: ~s~s~n~n~s~n", [ProgramName, usage_cmd_line(OptSpecList), usage_options(OptSpecList)]).
+    io:format("Usage: ~s~s~n~n~s~n",
+              [ProgramName, usage_cmd_line(OptSpecList), usage_options(OptSpecList)]).
 
 
 -spec usage_cmd_line([option_spec()]) -> string().
