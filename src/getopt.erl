@@ -10,107 +10,109 @@
 %% @headerfile "getopt.hrl"
 
 -define(TAB_LENGTH, 8).
--define(HELP_INDENTATION, 4 * ?TAB_LENGTH).
+-define(HELP_INDENTATION, 3 * ?TAB_LENGTH).
 
-%% @type option()      = atom() | {atom(), getopt_arg()}. Option type and optional default argument.
--type option()        :: atom() | {atom(), getopt_arg()}.
-%% @type option_spec() = [#option{}]. Command line options specification.
--type option_spec()   :: [#option{}].
-%% @type option_list() = [option()]. List of option types.
--type option_list()   :: [option()].
-%% @type arg_list()    = [getopt_arg()]. List of arguments returned to the calling function.
--type arg_list()      :: [getopt_arg()].
+%% @type option() = atom() | {atom(), getopt_arg()}. Option type and optional default argument.
+-type option() :: atom() | {atom(), getopt_arg()}.
+%% @type option_spec() = #option{}. Command line option specification.
+-type option_spec() :: #option{}.
 
 -export([parse/2, usage/2]).
 
 
--spec parse(option_spec(), [string()]) -> option_list().
+-spec parse([option_spec()], [string()]) -> {ok, {[option()], [string()]}} | {error, {Reason :: atom(), Data :: any()}}.
 %%--------------------------------------------------------------------
-%% @spec parse(OptSpec::option_spec(), Args::[string()]) -> option_list().
+%% @spec parse(OptSpecList::[option_spec()], Args::[string()]) -> [option()].
 %% @doc  Parse the command line options and arguments returning a list of tuples
 %%       and/or atoms using the Erlang convention for sending options to a
 %%       function.
 %%--------------------------------------------------------------------
-parse(OptSpec, Args) ->
-    catch parse(OptSpec, [], [], Args).
+parse(OptSpecList, Args) ->
+    try
+        parse(OptSpecList, [], [], 0, Args)
+    catch
+        throw: {error, {_Reason, _Data}} = Error ->
+            Error
+    end.
 
--spec parse(option_spec(), option_list(), arg_list(), [string()]) -> option_list().
-%% Process short and long options
-parse(OptSpec, OptAcc, ArgAcc, [("-" ++ OptTail) = Opt | Tail]) ->
-    {SearchField, OptName} = case OptTail of
-                                 "-" ++ Str ->
-                                     {#option.long, Str};
-                                 [Char] ->
-                                     {#option.short, Char};
-                                 _ ->
-                                     throw({error, {invalid_option, Opt}})
-                             end,
+-spec parse([option_spec()], [option()], [string()], integer(), [string()]) -> {ok, {[option()], [string()]}} | {error, {Reason :: atom(), Data:: any()}}.
+%% Process long options.
+parse(OptSpecList, OptAcc, ArgAcc, ArgPos, [[$-, $- | LongName] = OptStr | Tail]) ->
+    {Option, Tail1} = get_option(OptSpecList, OptStr, LongName, #option.long, Tail),
+    parse(OptSpecList, [Option | OptAcc], ArgAcc, ArgPos, Tail1);
+%% Process short options.
+parse(OptSpecList, OptAcc, ArgAcc, ArgPos, [[$-, ShortName] = OptStr | Tail]) ->
+    {Option, Tail1} = get_option(OptSpecList, OptStr, ShortName, #option.short, Tail),
+    parse(OptSpecList, [Option | OptAcc], ArgAcc, ArgPos, Tail1);
+%% Process multiple short options with no argument.
+parse(OptSpecList, OptAcc, ArgAcc, ArgPos, [[$- | ShortNameList] = OptStr | Tail]) ->
+    NewOptAcc = lists:foldl(fun (ShortName, OptAcc1) ->
+                                    [get_option_no_arg(OptSpecList, OptStr, ShortName, #option.short) | OptAcc1]
+                            end, OptAcc, ShortNameList),
+    parse(OptSpecList, NewOptAcc, ArgAcc, ArgPos, Tail);
+%% Process non-option arguments.
+parse(OptSpecList, OptAcc, ArgAcc, ArgPos, [Arg | Tail]) ->
+    case find_non_option_arg(OptSpecList, ArgPos) of
+        {value, #option{} = OptSpec} ->
+            parse(OptSpecList, [convert_option_arg(OptSpec, Arg) | OptAcc], ArgAcc, ArgPos + 1, Tail);
+        false ->
+            parse(OptSpecList, OptAcc, [Arg | ArgAcc], ArgPos, Tail)
+    end;
+parse(OptSpecList, OptAcc, ArgAcc, _ArgPos, []) ->
+    %% Once we have completed gathering the options we add the ones that were
+    %% not present but had default arguments in the specification.
+    {ok, {lists:reverse(append_default_args(OptSpecList, OptAcc)), lists:reverse(ArgAcc)}}.
 
-    case lists:keysearch(OptName, SearchField, OptSpec) of
-        {value, #option{name = Name, arg = ArgSpec}} ->
-            if
-                ArgSpec =/= undefined ->
+
+-spec get_option([option_spec()], string(), string() | char(), integer(), [string()]) ->
+    {option(), [string()]}.
+%% @doc Retrieve the specification corresponding to an option matching a string
+%%      received on the command line.
+get_option(OptSpecList, OptStr, OptName, FieldPos, Tail) ->
+    case lists:keysearch(OptName, FieldPos, OptSpecList) of
+        {value, #option{name = Name, arg = ArgSpec} = OptSpec} ->
+            case ArgSpec of
+                undefined ->
+                    {Name, Tail};
+                _ ->
                     case Tail of
                         [Arg | Tail1] ->
-                            parse(OptSpec, [convert_option_arg(Name, ArgSpec, Arg) | OptAcc], ArgAcc, Tail1);
-                        [] ->
+                            {convert_option_arg(OptSpec, Arg), Tail1};
+                                    [] ->
                             throw({error, {missing_option_arg, Name}})
-                    end;
-                true ->
-                    parse(OptSpec, [Name | OptAcc], ArgAcc, Tail)
+                    end
             end;
         false ->
-            {error, {invalid_option, Opt}}
-    end;
-%% Process the discrete arguments
-parse(OptSpec, OptAcc, ArgAcc, [Arg | Tail]) ->
-    parse(OptSpec, OptAcc, [Arg | ArgAcc], Tail);
-parse(OptSpec, OptAcc, ArgAcc, []) ->
-    %% Once we have completed gathering the options that have short and long
-    %% option strings we merge the remaining discrete arguments that were
-    %% specified.
-    {MergedOpts, MergedArgs} = merge_discrete_args(OptSpec, OptAcc, ArgAcc),
-    %% Finally, we set the options that were not present to their default
-    %% arguments.
-    {ok, {lists:reverse(append_default_args(OptSpec, MergedOpts)), MergedArgs}}.
+            throw({error, {invalid_option, OptStr}})
+    end.
 
-
-
--spec merge_discrete_args(option_spec(), option_list(), arg_list()) -> {option_list(), arg_list()}.
-%% @doc Merge the discrete arguments that were declared in the option
-%%      specification to the list of options.
-merge_discrete_args(OptSpec, Options, Args) ->
-    merge_discrete_args(OptSpec, Args, 0, Options, []).
-
-merge_discrete_args(OptSpec, [Head | Tail] = Args, Count, OptAcc, ArgAcc) ->
-    case find_discrete_arg(OptSpec, 0) of
-        {value, #option{name = Name, arg = ArgSpec}} ->
-            merge_discrete_args(OptSpec, Tail, Count + 1, [convert_option_arg(Name, ArgSpec, Head) | OptAcc], ArgAcc);
+-spec get_option_no_arg([option_spec()], string(), string() | char(), integer()) -> option().
+%% @doc Retrieve the specification corresponding to an option that has no
+%%      argument and matches a string received on the command line.
+get_option_no_arg(OptSpecList, OptStr, OptName, FieldPos) ->
+    case lists:keysearch(OptName, FieldPos, OptSpecList) of
+        {value, #option{name = Name, arg = undefined}} ->
+            Name;
+        {value, #option{name = Name}} ->
+            throw({error, {missing_option_arg, Name}});
         false ->
-            %% If we could not find a discrete option specification that means
-            %% that all the remaining elements in the list are discrete
-            %% arguments.
-            %% merge_discrete_args(OptSpec, Tail, Count, OptAcc, [Head | ArgAcc])
-            {OptAcc, lists:foldl(fun (Arg, Acc) -> [Arg | Acc] end, ArgAcc, Args)}
-    end;
-merge_discrete_args(_OptSpec, [], _Count, OptAcc, ArgAcc) ->
-    {OptAcc, ArgAcc}.
+            throw({error, {invalid_option, OptStr}})
+    end.
 
-
--spec find_discrete_arg(option_spec(), integer()) -> {value, #option{}} | false.
+-spec find_non_option_arg([option_spec()], integer()) -> {value, option_spec()} | false.
 %% @doc Find the option for the discrete argument in position specified in the
 %%      Pos argument.
-find_discrete_arg([#option{short = undefined, long = undefined} = Opt | _Tail], 0) ->
+find_non_option_arg([#option{short = undefined, long = undefined} = Opt | _Tail], 0) ->
      {value, Opt};
-find_discrete_arg([#option{short = undefined, long = undefined} | Tail], Pos) ->
-    find_discrete_arg(Tail, Pos - 1);
-find_discrete_arg([_Head | Tail], Pos) ->
-    find_discrete_arg(Tail, Pos);
-find_discrete_arg([], _Pos) ->
+find_non_option_arg([#option{short = undefined, long = undefined} | Tail], Pos) ->
+    find_non_option_arg(Tail, Pos - 1);
+find_non_option_arg([_Head | Tail], Pos) ->
+    find_non_option_arg(Tail, Pos);
+find_non_option_arg([], _Pos) ->
     false.
 
 
--spec append_default_args(option_spec(), option_list()) -> option_list().
+-spec append_default_args([option_spec()], [option()]) -> [option()].
 %% @doc Appends the default values of the options that are not present.
 append_default_args([#option{name = Name, arg = {_Type, DefaultArg}} | Tail], OptAcc) ->
     append_default_args(Tail,
@@ -127,10 +129,10 @@ append_default_args([], OptAcc) ->
     OptAcc.
 
 
--spec convert_option_arg(atom(), getopt_arg_spec(), Arg :: string()) -> option_list().
+-spec convert_option_arg(option_spec(), string()) -> [option()].
 %% @doc Convert the argument passed in the command line to the data type
 %%      indicated byt the argument specification.
-convert_option_arg(Name, ArgSpec, Arg) ->
+convert_option_arg(#option{name = Name, arg = ArgSpec}, Arg) ->
     try
         Converted = case ArgSpec of
                         {Type, _DefaultArg} ->
@@ -144,7 +146,7 @@ convert_option_arg(Name, ArgSpec, Arg) ->
             throw({error, {invalid_option_arg, {Name, Arg}}})
     end.
 
-
+-spec to_type(atom(), string()) -> getopt_arg().
 to_type(binary, Arg) ->
     list_to_binary(Arg);
 to_type(atom, Arg) ->
@@ -162,21 +164,21 @@ to_type(_Type, Arg) ->
     Arg.
 
 
--spec usage(option_spec(), string()) -> ok.
+-spec usage([option_spec()], string()) -> ok.
 %%--------------------------------------------------------------------
-%% @spec usage(OptSpec :: option_spec(), ProgramName :: string()) -> ok.
+%% @spec usage(OptSpecList :: option_spec_list(), ProgramName :: string()) -> ok.
 %% @doc  Show a message on stdout indicating the command line options and
 %%       arguments that are supported by the program.
 %%--------------------------------------------------------------------
-usage(OptSpec, ProgramName) ->
-    io:format("Usage: ~s~s~n~n~s~n", [ProgramName, usage_cmd_line(OptSpec), usage_options(OptSpec)]).
+usage(OptSpecList, ProgramName) ->
+    io:format("Usage: ~s~s~n~n~s~n", [ProgramName, usage_cmd_line(OptSpecList), usage_options(OptSpecList)]).
 
 
--spec usage_cmd_line(option_spec()) -> string().
+-spec usage_cmd_line([option_spec()]) -> string().
 %% @doc Return a string with the syntax for the command line options and
 %%      arguments.
-usage_cmd_line(OptSpec) ->
-    usage_cmd_line(OptSpec, []).
+usage_cmd_line(OptSpecList) ->
+    usage_cmd_line(OptSpecList, []).
 
 %% For options with short form and no argument.
 usage_cmd_line([#option{short = Short, arg = undefined} | Tail], Acc) when Short =/= undefined ->
@@ -197,13 +199,13 @@ usage_cmd_line([], Acc) ->
     lists:flatten(lists:reverse(Acc)).
 
 
--spec usage_options(option_spec()) -> string().
+-spec usage_options([option_spec()]) -> string().
 %% @doc Return a string with the help message for each of the options and
 %%      arguments.
-usage_options(OptSpec) ->
-    usage_options(OptSpec, []).
+usage_options(OptSpecList) ->
+    usage_options(OptSpecList, []).
 
-%% Neither short nor long form (discrete argument).
+%% Neither short nor long form (non-option argument).
 usage_options([#option{name = Name, short = undefined, long = undefined} = Opt | Tail], Acc) ->
     usage_options(Tail, add_option_help(Opt, [$<, atom_to_list(Name), $>], Acc));
 %% Only short form.
@@ -219,7 +221,7 @@ usage_options([], Acc) ->
     lists:flatten(lists:reverse(Acc)).
 
 
--spec add_option_help(#option{}, Prefix :: list(), Acc :: list()) -> list().
+-spec add_option_help(option_spec(), Prefix :: string(), Acc :: string()) -> string().
 %% @doc Add the help message corresponding to an option specification to a list
 %%      with the correct indentation.
 add_option_help(#option{help = Help}, Prefix, Acc) when is_list(Help), Help =/= [] ->
@@ -229,8 +231,10 @@ add_option_help(#option{help = Help}, Prefix, Acc) when is_list(Help), Help =/= 
             Tab = lists:duplicate(ceiling(TabSize / ?TAB_LENGTH), $\t),
             [[$\s, $\s, FlatPrefix, Tab, Help, $\n] | Acc];
         _ ->
-            %% The indentation for the option description is 4 tabs (i.e. 32 characters)
-            [[$\t, $\t, $\t, $\t, Help, $\n], [$\s, $\s, FlatPrefix, $\n] | Acc]
+            %% The indentation for the option description is 3 tabs (i.e. 24 characters)
+            %% IMPORTANT: Change the number of tabs below if you change the
+            %%            value of the INDENTATION macro.
+            [[$\t, $\t, $\t, Help, $\n], [$\s, $\s, FlatPrefix, $\n] | Acc]
     end;
 add_option_help(_Opt, _Prefix, Acc) ->
     Acc.

@@ -4,9 +4,9 @@
 %% @type getopt_arg()      = atom() | binary() | bool() | float() | integer() | string().
 %% Data type that an argument can be converted to.
 -type getopt_arg()      :: atom() | binary() | boolean() | float() | integer() | string().
-%% @type getopt_arg_spec() = getopt_arg_type() | {getopt_arg_type(), getopt_arg()} | help | undefined.
+%% @type getopt_arg_spec() = getopt_arg_type() | {getopt_arg_type(), getopt_arg()} | undefined.
 %% Argument specification.
--type getopt_arg_spec() :: getopt_arg_type() | {getopt_arg_type(), getopt_arg()} | help | undefined.
+-type getopt_arg_spec() :: getopt_arg_type() | {getopt_arg_type(), getopt_arg()} | undefined.
 
 %% @doc Record that defines the option specifications.
 -record(option, {
