@@ -15,10 +15,10 @@ run: all
 test: all
 	@$(ERL) -noshell $(EPATH) -s $(PROJECT)_test test -s init stop
 
-examples: all
+example: all
 	@$(ERL) -noshell $(EPATH) -s ex1 test -s init stop
 
-doc: all
+docs: all
 	@$(ERL) -noshell $(EPATH) \
 		-eval "edoc:files(filelib:wildcard(\"$(SOURCES)\"), [$(DOC_OPTS)])" \
 		-s init stop
