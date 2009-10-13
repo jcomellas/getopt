@@ -3,6 +3,10 @@
 %%% @copyright (C) 2009, Novamens SA (http://www.novamens.com)
 %%% @doc Parses command line options with a format similar to that of GNU getopt.
 %%% @end
+%%%
+%%% This source file is subject to the New BSD License. You should have received
+%%% a copy of the New BSD license with this software. If not, it can be
+%%% retrieved from: http://www.opensource.org/licenses/bsd-license.php
 %%%-------------------------------------------------------------------
 -module(getopt).
 
