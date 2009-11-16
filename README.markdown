@@ -14,13 +14,13 @@ has only been tested with Erlang R13B.
 Installation
 ------------
 
-To compile the module you simply run 'make'.
+To compile the module you simply run ``make``.
 
-To run the unit tests run 'make test'.
+To run the unit tests run ``make test``.
 
-To run the example module run 'make example'.
+To run the example module run ``make example``.
 
-To build the (very) limited documentation run 'make docs'.
+To build the (very) limited documentation run ``make docs``.
 
 
 Usage
