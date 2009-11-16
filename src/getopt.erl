@@ -1,6 +1,6 @@
 %%%-------------------------------------------------------------------
-%%% @author Juan Jose Comellas <jcomellas@novamens.com>
-%%% @copyright (C) 2009, Novamens SA (http://www.novamens.com)
+%%% @author Juan Jose Comellas <juanjo@comellas.org>
+%%% @copyright (C) 2009 Juan Jose Comellas
 %%% @doc Parses command line options with a format similar to that of GNU getopt.
 %%% @end
 %%%
@@ -9,19 +9,40 @@
 %%% retrieved from: http://www.opensource.org/licenses/bsd-license.php
 %%%-------------------------------------------------------------------
 -module(getopt).
--author('Juan Jose Comellas <jcomellas@novamens.com>').
-
--include("getopt.hrl").
-%% @headerfile "getopt.hrl"
+-author('juanjo@comellas.org').
 
 -define(TAB_LENGTH, 8).
 %% Indentation of the help messages in number of tabs.
 -define(INDENTATION, 3).
 
-%% @type option() = atom() | {atom(), getopt_arg()}. Option type and optional default argument.
--type option() :: atom() | {atom(), getopt_arg()}.
+-define(OPT_NAME, 1).
+-define(OPT_SHORT, 2).
+-define(OPT_LONG, 3).
+-define(OPT_ARG, 4).
+-define(OPT_HELP, 5).
+
+-define(IS_OPT_SPEC(Opt), (is_tuple(Opt) andalso (size(Opt) =:= ?OPT_HELP))).
+
+
+%% @type arg_type() = 'atom' | 'binary' | 'bool' | 'float' | 'integer' | 'string'.
+%% Atom indicating the data type that an argument can be converted to.
+-type arg_type() :: 'atom' | 'binary' | 'boolean' | 'float' | 'integer' | 'string'.
+%% @type arg_value() = atom() | binary() | bool() | float() | integer() | string().
+%% Data type that an argument can be converted to.
+-type arg_value() :: atom() | binary() | boolean() | float() | integer() | string().
+%% @type arg_spec() = arg_type() | {arg_type(), arg_value()} | undefined.
+%% Argument specification.
+-type arg_spec() :: arg_type() | {arg_type(), arg_value()} | undefined.
+%% @type option() = atom() | {atom(), arg_value()}. Option type and optional default argument.
+-type option() :: atom() | {atom(), arg_value()}.
 %% @type option_spec() = #option{}. Command line option specification.
--type option_spec() :: #option{}.
+-type option_spec() :: {
+                   Name    :: atom(),
+                   Short   :: char() | undefined,
+                   Long    :: string() | undefined,
+                   ArgSpec :: arg_spec(),
+                   Help    :: string() | undefined
+                  }.
 
 -export([parse/2, usage/2]).
 
@@ -51,24 +72,24 @@ parse(OptSpecList, CmdLine) ->
     {ok, {[option()], [string()]}} | {error, {Reason :: atom(), Data:: any()}}.
 %% Process long options.
 parse(OptSpecList, OptAcc, ArgAcc, ArgPos, [[$-, $- | LongName] = OptStr | Tail]) ->
-    {Option, Tail1} = get_option(OptSpecList, OptStr, LongName, #option.long, Tail),
+    {Option, Tail1} = get_option(OptSpecList, OptStr, LongName, ?OPT_LONG, Tail),
     parse(OptSpecList, [Option | OptAcc], ArgAcc, ArgPos, Tail1);
 %% Process short options.
 parse(OptSpecList, OptAcc, ArgAcc, ArgPos, [[$-, ShortName] = OptStr | Tail]) ->
-    {Option, Tail1} = get_option(OptSpecList, OptStr, ShortName, #option.short, Tail),
+    {Option, Tail1} = get_option(OptSpecList, OptStr, ShortName, ?OPT_SHORT, Tail),
     parse(OptSpecList, [Option | OptAcc], ArgAcc, ArgPos, Tail1);
 %% Process multiple short options with no argument.
 parse(OptSpecList, OptAcc, ArgAcc, ArgPos, [[$- | ShortNameList] = OptStr | Tail]) ->
     NewOptAcc =
         lists:foldl(
           fun (ShortName, OptAcc1) ->
-                  [get_option_no_arg(OptSpecList, OptStr, ShortName, #option.short) | OptAcc1]
+                  [get_option_no_arg(OptSpecList, OptStr, ShortName, ?OPT_SHORT) | OptAcc1]
           end, OptAcc, ShortNameList),
     parse(OptSpecList, NewOptAcc, ArgAcc, ArgPos, Tail);
 %% Process non-option arguments.
 parse(OptSpecList, OptAcc, ArgAcc, ArgPos, [Arg | Tail]) ->
     case find_non_option_arg(OptSpecList, ArgPos) of
-        {value, #option{} = OptSpec} ->
+        {value, OptSpec} when ?IS_OPT_SPEC(OptSpec) ->
             parse(OptSpecList, [convert_option_arg(OptSpec, Arg) | OptAcc], ArgAcc, ArgPos + 1, Tail);
         false ->
             parse(OptSpecList, OptAcc, [Arg | ArgAcc], ArgPos, Tail)
@@ -85,7 +106,7 @@ parse(OptSpecList, OptAcc, ArgAcc, _ArgPos, []) ->
 %%      received on the command line.
 get_option(OptSpecList, OptStr, OptName, FieldPos, Tail) ->
     case lists:keysearch(OptName, FieldPos, OptSpecList) of
-        {value, #option{name = Name, arg = ArgSpec} = OptSpec} ->
+        {value, {Name, _Short, _Long, ArgSpec, _Help} = OptSpec} ->
             case ArgSpec of
                 undefined ->
                     {Name, Tail};
@@ -106,9 +127,9 @@ get_option(OptSpecList, OptStr, OptName, FieldPos, Tail) ->
 %%      argument and matches a string received on the command line.
 get_option_no_arg(OptSpecList, OptStr, OptName, FieldPos) ->
     case lists:keysearch(OptName, FieldPos, OptSpecList) of
-        {value, #option{name = Name, arg = undefined}} ->
+        {value, {Name, _Short, _Long, undefined, _Help}} ->
             Name;
-        {value, #option{name = Name}} ->
+        {value, {Name, _Short, _Long, _ArgSpec, _Help}} ->
             throw({error, {missing_option_arg, Name}});
         false ->
             throw({error, {invalid_option, OptStr}})
@@ -117,9 +138,9 @@ get_option_no_arg(OptSpecList, OptStr, OptName, FieldPos) ->
 -spec find_non_option_arg([option_spec()], integer()) -> {value, option_spec()} | false.
 %% @doc Find the option for the discrete argument in position specified in the
 %%      Pos argument.
-find_non_option_arg([#option{short = undefined, long = undefined} = Opt | _Tail], 0) ->
-     {value, Opt};
-find_non_option_arg([#option{short = undefined, long = undefined} | Tail], Pos) ->
+find_non_option_arg([{_Name, undefined, undefined, _ArgSpec, _Help} = OptSpec | _Tail], 0) ->
+     {value, OptSpec};
+find_non_option_arg([{_Name, undefined, undefined, _ArgSpec, _Help} | Tail], Pos) ->
     find_non_option_arg(Tail, Pos - 1);
 find_non_option_arg([_Head | Tail], Pos) ->
     find_non_option_arg(Tail, Pos);
@@ -129,7 +150,7 @@ find_non_option_arg([], _Pos) ->
 
 -spec append_default_args([option_spec()], [option()]) -> [option()].
 %% @doc Appends the default values of the options that are not present.
-append_default_args([#option{name = Name, arg = {_Type, DefaultArg}} | Tail], OptAcc) ->
+append_default_args([{Name, _Short, _Long, {_Type, DefaultArg}, _Help} | Tail], OptAcc) ->
     append_default_args(Tail,
                case lists:keymember(Name, 1, OptAcc) of
                    false ->
@@ -147,7 +168,7 @@ append_default_args([], OptAcc) ->
 -spec convert_option_arg(option_spec(), string()) -> [option()].
 %% @doc Convert the argument passed in the command line to the data type
 %%      indicated byt the argument specification.
-convert_option_arg(#option{name = Name, arg = ArgSpec}, Arg) ->
+convert_option_arg({Name, _Short, _Long, ArgSpec, _Help}, Arg) ->
     try
         Converted = case ArgSpec of
                         {Type, _DefaultArg} ->
@@ -161,7 +182,7 @@ convert_option_arg(#option{name = Name, arg = ArgSpec}, Arg) ->
             throw({error, {invalid_option_arg, {Name, Arg}}})
     end.
 
--spec to_type(atom(), string()) -> getopt_arg().
+-spec to_type(atom(), string()) -> arg_value().
 to_type(binary, Arg) ->
     list_to_binary(Arg);
 to_type(atom, Arg) ->
@@ -196,21 +217,34 @@ usage(OptSpecList, ProgramName) ->
 usage_cmd_line(OptSpecList) ->
     usage_cmd_line(OptSpecList, []).
 
-%% For options with short form and no argument.
-usage_cmd_line([#option{short = Short, arg = undefined} | Tail], Acc) when Short =/= undefined ->
-    usage_cmd_line(Tail, [[$\s, $[, $-, Short, $]] | Acc]);
-%% For options with only long form and no argument.
-usage_cmd_line([#option{long = Long, arg = undefined} | Tail], Acc) when Long =/= undefined ->
-    usage_cmd_line(Tail, [[$\s, $[, $-, $-, Long, $]] | Acc]);
-%% For options with short form and argument.
-usage_cmd_line([#option{name = Name, short = Short} | Tail], Acc) when Short =/= undefined ->
-    usage_cmd_line(Tail, [[$\s, $[, $-, Short, $\s, $<, atom_to_list(Name), $>, $]] | Acc]);
-%% For options with only long form and argument.
-usage_cmd_line([#option{name = Name, long = Long} | Tail], Acc) when Long =/= undefined ->
-    usage_cmd_line(Tail, [[$\s, $[, $-, $-, Long, $\s, $<, atom_to_list(Name), $>, $]] | Acc]);
-%% For options with neither short nor long form and argument.
-usage_cmd_line([#option{name = Name, arg = ArgSpec} | Tail], Acc) when ArgSpec =/= undefined ->
-    usage_cmd_line(Tail, [[$\s, $<, atom_to_list(Name), $>] | Acc]);
+usage_cmd_line([{Name, Short, Long, ArgSpec, _Help} | Tail], Acc) ->
+    CmdLine =
+        case ArgSpec of
+            undefined ->
+                if
+                    %% For options with short form and no argument.
+                    Short =/= undefined ->
+                        [$\s, $[, $-, Short, $]];
+                    %% For options with only long form and no argument.
+                    Long =/= undefined ->
+                        [$\s, $[, $-, $-, Long, $]];
+                    true ->
+                        []
+                end;
+            _ ->
+                if
+                    %% For options with short form and argument.
+                    Short =/= undefined ->
+                        [$\s, $[, $-, Short, $\s, $<, atom_to_list(Name), $>, $]];
+                    %% For options with only long form and argument.
+                    Long =/= undefined ->
+                        [$\s, $[, $-, $-, Long, $\s, $<, atom_to_list(Name), $>, $]];
+                    %% For options with neither short nor long form and argument.
+                    true ->
+                        [$\s, $<, atom_to_list(Name), $>]
+                end
+        end,
+    usage_cmd_line(Tail, [CmdLine | Acc]);
 usage_cmd_line([], Acc) ->
     lists:flatten(lists:reverse(Acc)).
 
@@ -221,26 +255,36 @@ usage_cmd_line([], Acc) ->
 usage_options(OptSpecList) ->
     usage_options(OptSpecList, []).
 
-%% Neither short nor long form (non-option argument).
-usage_options([#option{name = Name, short = undefined, long = undefined} = Opt | Tail], Acc) ->
-    usage_options(Tail, add_option_help(Opt, [$<, atom_to_list(Name), $>], Acc));
-%% Only short form.
-usage_options([#option{short = Short, long = undefined} = Opt | Tail], Acc) ->
-    usage_options(Tail, add_option_help(Opt, [$-, Short], Acc));
-%% Only long form.
-usage_options([#option{short = undefined, long = Long} = Opt | Tail], Acc) ->
-    usage_options(Tail, add_option_help(Opt, [$-, $-, Long], Acc));
-%% Both short and long form.
-usage_options([#option{short = Short, long = Long} = Opt | Tail], Acc) ->
-    usage_options(Tail, add_option_help(Opt, [$-, Short, $,, $\s, $-, $-, Long], Acc));
+usage_options([{Name, Short, Long, _ArgSpec, _Help} = OptSpec | Tail], Acc) ->
+    Prefix = 
+        case Long of 
+            undefined ->
+                case Short of
+                    %% Neither short nor long form (non-option argument).
+                    undefined ->
+                        [$<, atom_to_list(Name), $>];
+                    %% Only short form.
+                    _ ->
+                        [$-, Short]
+                end;
+            _ ->
+                case Short of
+                    %% Only long form.
+                    undefined ->
+                        [$-, $-, Long];
+                    %% Both short and long form.
+                    _ ->
+                        [$-, Short, $,, $\s, $-, $-, Long]
+                end
+        end,
+    usage_options(Tail, add_option_help(OptSpec, Prefix, Acc));
 usage_options([], Acc) ->
     lists:flatten(lists:reverse(Acc)).
-
 
 -spec add_option_help(option_spec(), Prefix :: string(), Acc :: string()) -> string().
 %% @doc Add the help message corresponding to an option specification to a list
 %%      with the correct indentation.
-add_option_help(#option{help = Help}, Prefix, Acc) when is_list(Help), Help =/= [] ->
+add_option_help({_Name, _Short, _Long, _ArgSpec, Help}, Prefix, Acc) when is_list(Help), Help =/= [] ->
     FlatPrefix = lists:flatten(Prefix),
     case ((?INDENTATION * ?TAB_LENGTH) - 2 - length(FlatPrefix)) of
         TabSize when TabSize > 0 ->

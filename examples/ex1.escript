@@ -1,3 +1,7 @@
+#!/usr/bin/env escript
+%% -*- erlang -*-
+%%! -sname ex1 -pz ebin
+
 %%%-------------------------------------------------------------------
 %%% @author Juan Jose Comellas <juanjo@comellas.org>
 %%% @copyright (C) 2009 Juan Jose Comellas
@@ -11,28 +15,29 @@
 -module(ex1).
 -author('juanjo@comellas.org').
 
--export([test/0, test/1]).
-
-test() ->
-    test("-U myuser -P mypassword --host myhost -x -o myfile.dump mydb dummy1").
-
-
-test(CmdLine) ->
-    OptSpecList = option_spec(),
+main([]) ->
+    getopt:usage(option_spec_list(), "ex1.escript");
+main(Args) ->
+    OptSpecList = option_spec_list(),
 
     io:format("For command line: ~p~n"
-              "getopt:parse/2 returns:~n~n", [CmdLine]),
-    case getopt:parse(OptSpecList, CmdLine) of
+              "getopt:parse/2 returns:~n~n", [Args]),
+    case getopt:parse(OptSpecList, Args) of
         {ok, {Options, NonOptArgs}} ->
             io:format("Options:~n  ~p~n~nNon-option arguments:~n  ~p~n", [Options, NonOptArgs]);
         {error, {Reason, Data}} ->
             io:format("Error: ~s ~p~n~n", [Reason, Data]),
-            getopt:usage(OptSpecList, "ex1")
+            getopt:usage(OptSpecList, "ex1.escript")
     end.
 
 
-option_spec() ->
-    CurrentUser = os:getenv("USER"),
+option_spec_list() ->
+    CurrentUser = case os:getenv("USER") of
+                      false ->
+                          "user";
+                      User ->
+                          User
+                  end,
     [
      %% {Name,     ShortOpt,  LongOpt,       ArgSpec,               HelpMsg}
      {help,        $?,        "help",        undefined,             "Show the program options"},

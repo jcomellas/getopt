@@ -28,81 +28,59 @@ Usage
 
 The *getopt* module provides two functions:
 
-    parse([#option{}], Args :: string() | [string()]) ->
+    parse([{Name, Short, Long, ArgSpec, Help}], Args :: string() | [string()]) ->
         {ok, {Options, NonOptionArgs}} | {error, {Reason, Data}}
 
-    usage([#option{}], ProgramName :: string()) -> ok
+    usage([{Name, Short, Long, ArgSpec, Help}], ProgramName :: string()) -> ok
 
-The ``parse/2`` function receives a list of ``#option{}`` records (defined in
-``getopt.hrl``) with the command line option specifications. The ``#option{}``
-record has the following elements:
+The ``parse/2`` function receives a list of tuples with the command line option
+specifications. The type specification for the tuple is:
 
-    -record(option, {
-              name              :: atom(),
-              short             :: char() | undefined,
-              long              :: string() | undefined,
-              arg               :: getopt_arg_type() | {getopt_arg_type(), getopt_arg()} | undefined.
-              help              :: string() | undefined
-             }).
+    -type arg_type() :: 'atom' | 'binary' | 'boolean' | 'float' | 'integer' | 'string'.
+
+    -type arg_value() :: atom() | binary() | boolean() | float() | integer() | string().
+
+    -type arg_spec() :: arg_type() | {arg_type(), arg_value()} | undefined.
+
+    -type option_spec() :: {
+                       Name    :: atom(),
+                       Short   :: char() | undefined,
+                       Long    :: string() | undefined,
+                       ArgSpec :: arg_spec(),
+                       Help    :: string() | undefined
+                      }.
 
 The fields of the record are:
 
-  - ``name``: name of the option.
-  - ``short``: character for the short option (e.g. $i for -i).
-  - ``long``: string for the long option (e.g. "info" for --info).
-  - ``arg``: data type the argument will be converted to with an optional default value. It can either be an atom() (one of: 'atom', 'binary', 'boolean', 'float', 'integer', 'string') or a tuple with an atom() and the default value for that argument.
-  - ``help``: help message that is shown for the option when usage/2 is called.
+  - ``Name``: name of the option.
+  - ``Short``: character for the short option (e.g. $i for -i).
+  - ``Long``: string for the long option (e.g. "info" for --info).
+  - ``ArgSpec``: data type and optional default value the argument will be converted to.
+  - ``Help``: help message that is shown for the option when usage/2 is called.
 
 The second parameter holds the list of arguments as passed to the ``main/1``
-function in escripts.
+function in escripts. e.g.
 
-e.g.
-
-     #option{name     = port,
-             short    = $p,
-             long     = "port",
-             arg      = {integer, 5432},
-             help     = "Database server port"
-            }
+     {port, $p, "port", {integer, 5432}, "Database server port"}
 
 If the function is successful parsing the command line arguments it will return
 a tuple containing the parsed options and the non-option arguments. The options
-will be represented by a list of key-value pairs with the ``name`` of the
+will be represented by a list of key-value pairs with the ``Name`` of the
 option as *key* and the argument from the command line as *value*. If the option
-doesn't have an argument, only the atom corresponding to its ``name`` will be
+doesn't have an argument, only the atom corresponding to its ``Name`` will be
 added to the list of options. For the example given above we could get something
 like ``{port, 5432}``. The non-option arguments are just a list of strings with
 all the arguments that did not have corresponding options.
 
-e.g. For a program named ``ex1.escript`` with the following option specifications:
+e.g. For a program named ``ex.escript`` with the following option specifications:
 
     OptSpec =
         [
-         #option{name     = host,
-                 short    = $h,
-                 long     = "host",
-                 arg      = {string, "localhost"},
-                 help     = "Database server host"
-                },
-         #option{name     = port,
-                 short    = $p,
-                 long     = "port",
-                 arg      = integer,
-                 help     = "Database server port"
-                },
-         #option{name     = dbname,
-                 long     = "dbname",
-                 arg      = {string, "users"},
-                 help     = "Database name"
-                },
-         #option{name     = xml,
-                 short    = $x,
-                 help     = "Output data in XML"
-                },
-         #option{name     = file,
-                 arg      = string,
-                 help     = "Output file"
-                }
+         {host,   $h,        "host",    {string, "localhost"}, "Database server host"},
+         {port,   $p,        "port",    integer,               "Database server port"},
+         {dbname, undefined, "dbname",  {string, "users"},     "Database name"},
+         {xml,    $x,        undefined, undefined,             "Output data in XML"},
+         {file,   undefined, undefined, string,                "Output file"}
         ].
 
 And this command line:
@@ -132,7 +110,7 @@ Also, the call to ``getopt:usage/2``:
 
 Will show (on *stdout*):
 
-    Usage: ex1 [-h <host>] [-p <port>] [--dbname <dbname>] [-x] <file>
+    Usage: ex.escript [-h <host>] [-p <port>] [--dbname <dbname>] [-x] <file>
 
       -h, --host                    Database server host
       -p, --port                    Database server port
@@ -146,13 +124,3 @@ Known limitations
 
   - The syntax for non-option arguments that start with '-' (e.g. -a -- -b)
     is not supported yet.
-
-
-Known problems
---------------
-
-Currently, with Erlang R13B (and older versions), escripts cannot use the
-``-include()`` preprocessor directive so you're forced to install the *getopt*
-package in Erlang's library path for your escripts to be able to include the
-``getopt.hrl`` header file that defines the ``#option{}`` record used by the
-functions in the *getopt* module.

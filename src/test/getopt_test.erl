@@ -1,6 +1,6 @@
 %%%-------------------------------------------------------------------
-%%% @author Juan Jose Comellas <jcomellas@novamens.com>
-%%% @copyright (C) 2009, Novamens SA (http://www.novamens.com)
+%%% @author Juan Jose Comellas <juanjo@comellas.org>
+%%% @copyright (C) 2009 Juan Jose Comellas
 %%% @doc Parses command line options with a format similar to that of GNU getopt.
 %%%
 %%% This source file is subject to the New BSD License. You should have received
@@ -9,12 +9,17 @@
 %%%-------------------------------------------------------------------
 
 -module(getopt_test).
--author('Juan Jose Comellas <jcomellas@novamens.com>').
+-author('juanjo@comellas.org').
 
--include("getopt.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
 -import(getopt, [parse/2, usage/2]).
+
+-define(NAME(Opt), element(1, Opt)).
+-define(SHORT(Opt), element(2, Opt)).
+-define(LONG(Opt), element(3, Opt)).
+-define(ARG_SPEC(Opt), element(4, Opt)).
+-define(HELP(Opt), element(5, Opt)).
 
 
 %%%-------------------------------------------------------------------
@@ -23,98 +28,22 @@
 
 %%% Test for the getopt/1 function
 parse_1_test_() ->
-    Short =
-        #option{name     = short,
-                short    = $a,
-                help     = "Option with only short form and no argument"
-               },
-    Short2 =
-        #option{name     = short2,
-                short    = $b,
-                help     = "Second option with only short form and no argument"
-               },
-    Short3 =
-        #option{name     = short3,
-                short    = $c,
-                help     = "Third ption with only short form and no argument"
-               },
-    ShortArg =
-        #option{name     = short_arg,
-                short    = $d,
-                arg      = string,
-                help     = "Option with only short form and argument"
-               },
-    ShortDefArg =
-        #option{name     = short_def_arg,
-                short    = $e,
-                arg      = {string, "default-short"},
-                help     = "Option with only short form and default argument"
-               },
-    ShortInt =
-        #option{name     = short_int,
-                short    = $f,
-                arg      = integer,
-                help     = "Option with only short form and integer argument"
-               },
-    Long =
-        #option{name     = long,
-                long     = "long",
-                help     = "Option with only long form and no argument"
-               },
-    LongArg =
-        #option{name     = long_arg,
-                long     = "long-arg",
-                arg      = string,
-                help     = "Option with only long form and argument"
-               },
-    LongDefArg =
-        #option{name     = long_def_arg,
-                long     = "long-def-arg",
-                arg      = {string, "default-long"},
-                help     = "Option with only long form and default argument"
-               },
-    LongInt =
-        #option{name     = long_int,
-                long     = "long-int",
-                arg      = integer,
-                help     = "Option with only long form and integer argument"
-               },
-    ShortLong =
-        #option{name     = short_long,
-                short    = $g,
-                long     = "short-long",
-                help     = "Option with short form, long form and no argument"
-               },
-    ShortLongArg =
-        #option{name     = short_long_arg,
-                short    = $h,
-                long     = "short-long-arg",
-                arg      = string,
-                help     = "Option with short form, long form and argument"
-               },
-    ShortLongDefArg =
-        #option{name     = short_long_def_arg,
-                short    = $i,
-                long     = "short-long-def-arg",
-                arg      = {string, "default-short-long"},
-                help     = "Option with short form, long form and default argument"
-               },
-    ShortLongInt =
-        #option{name     = short_long_int,
-                short    = $j,
-                long     = "short-long-int",
-                arg      = integer,
-                help     = "Option with short form, long form and integer argument"
-               },
-    NonOptArg =
-        #option{name     = non_opt_arg,
-                help     = "Non-option argument"
-               },
-    NonOptInt =
-        #option{name     = non_opt_int,
-                arg      = integer,
-                help     = "Non-option integer argument"
-               },
+    Short           = {short,              $a,        undefined,            undefined,                      "Option with only short form and no argument"},
+    Short2          = {short2,             $b,        undefined,            undefined,                      "Second option with only short form and no argument"},
+    Short3          = {short3,             $c,        undefined,            undefined,                      "Third option with only short form and no argument"},
+    ShortArg        = {short_arg,          $d,        undefined,            string,                         "Option with only short form and argument"},
+    ShortDefArg     = {short_def_arg,      $e,        undefined,            {string, "default-short"},      "Option with only short form and default argument"},
+    ShortInt        = {short_int,          $f,        undefined,            integer,                        "Option with only short form and integer argument"},
+    Long            = {long,               undefined, "long",               undefined,                      "Option with only long form and no argument"},
+    LongArg         = {long_arg,           undefined, "long-arg",           string,                         "Option with only long form and argument"},
+    LongDefArg      = {long_def_arg,       undefined, "long-def-arg",       {string, "default-long"},       "Option with only long form and default argument"},
+    LongInt         = {long_int,           undefined, "long-int",           integer,                        "Option with only long form and integer argument"},
+    ShortLong       = {short_long,         $g,        "short-long",         undefined,                      "Option with short form, long form and no argument"},
+    ShortLongArg    = {short_long_arg,     $h,        "short-long-arg",     string,                         "Option with short form, long form and argument"},
+    ShortLongDefArg = {short_long_def_arg, $i,        "short-long-def-arg", {string, "default-short-long"}, "Option with short form, long form and default argument"},
+    ShortLongInt    = {short_long_int,     $j,        "short-long-int",     integer,                        "Option with short form, long form and integer argument"},
+    NonOptArg       = {non_opt_arg,        undefined, undefined,            undefined,                      "Non-option argument"},
+    NonOptInt       = {non_opt_int,        undefined, undefined,            integer,                        "Non-option integer argument"},
     CombinedOptSpecs =
         [
          Short,
@@ -136,14 +65,14 @@ parse_1_test_() ->
         ],
     CombinedArgs =
         [
-         [$-, Short#option.short],
-         [$-, ShortArg#option.short], "value1",
-         [$-, ShortInt#option.short], "100",
-         [$-, Short2#option.short, Short3#option.short],
+         [$-, ?SHORT(Short)],
+         [$-, ?SHORT(ShortArg)], "value1",
+         [$-, ?SHORT(ShortInt)], "100",
+         [$-, ?SHORT(Short2), ?SHORT(Short3)],
          "--long",
          "--long-arg", "value2",
          "--long-int", "101",
-         [$-, ShortLong#option.short],
+         [$-, ?SHORT(ShortLong)],
          "--short-long-arg", "value3",
          "--short-long-int", "103",
          "value4",
@@ -153,22 +82,22 @@ parse_1_test_() ->
         ],
     CombinedOpts =
         [
-         Short#option.name,
-         {ShortArg#option.name, "value1"},
-         {ShortInt#option.name, 100},
-         Short2#option.name,
-         Short3#option.name,
-         Long#option.name,
-         {LongArg#option.name, "value2"},
-         {LongInt#option.name, 101},
-         ShortLong#option.name,
-         {ShortLongArg#option.name, "value3"},
-         {ShortLongInt#option.name, 103},
-         {NonOptArg#option.name, "value4"},
-         {NonOptInt#option.name, 104},
-         {ShortDefArg#option.name, "default-short"},
-         {LongDefArg#option.name, "default-long"},
-         {ShortLongDefArg#option.name, "default-short-long"}
+         ?NAME(Short),
+         {?NAME(ShortArg), "value1"},
+         {?NAME(ShortInt), 100},
+         ?NAME(Short2),
+         ?NAME(Short3),
+         ?NAME(Long),
+         {?NAME(LongArg), "value2"},
+         {?NAME(LongInt), 101},
+         ?NAME(ShortLong),
+         {?NAME(ShortLongArg), "value3"},
+         {?NAME(ShortLongInt), 103},
+         {?NAME(NonOptArg), "value4"},
+         {?NAME(NonOptInt), 104},
+         {?NAME(ShortDefArg), "default-short"},
+         {?NAME(LongDefArg), "default-long"},
+         {?NAME(ShortLongDefArg), "default-short-long"}
         ],
     CombinedRest = ["dummy1", "dummy2"],
          
@@ -184,41 +113,41 @@ parse_1_test_() ->
      {"Unused options and arguments",
       ?_assertMatch({ok, {[], ["arg1", "arg2"]}}, parse([Short], ["arg1", "arg2"]))},
      %% Options with only the short form
-     {Short#option.help,           ?_assertMatch({ok, {[short], []}}, parse([Short], [[$-, Short#option.short]]))},
-     {ShortArg#option.help,        ?_assertMatch({ok, {[{short_arg, "value"}], []}}, parse([ShortArg], [[$-, ShortArg#option.short], "value"]))},
-     {ShortDefArg#option.help,     ?_assertMatch({ok, {[{short_def_arg, "default-short"}], []}}, parse([ShortDefArg], []))},
-     {ShortInt#option.help,        ?_assertMatch({ok, {[{short_int, 100}], []}}, parse([ShortInt], [[$-, ShortInt#option.short], "100"]))},
+     {?HELP(Short),           ?_assertEqual({ok, {[short], []}}, parse([Short], [[$-, ?SHORT(Short)]]))},
+     {?HELP(ShortArg),        ?_assertEqual({ok, {[{short_arg, "value"}], []}}, parse([ShortArg], [[$-, ?SHORT(ShortArg)], "value"]))},
+     {?HELP(ShortDefArg),     ?_assertMatch({ok, {[{short_def_arg, "default-short"}], []}}, parse([ShortDefArg], []))},
+     {?HELP(ShortInt),        ?_assertEqual({ok, {[{short_int, 100}], []}}, parse([ShortInt], [[$-, ?SHORT(ShortInt)], "100"]))},
      {"Unsorted multiple short form options and arguments in a single string",
       ?_assertMatch({ok, {[short, short2, short3], ["arg1", "arg2"]}}, parse([Short, Short2, Short3], "arg1 -abc arg2"))},
      {"Short form option and arguments",
-      ?_assertMatch({ok, {[short], ["arg1", "arg2"]}}, parse([Short], [[$-, Short#option.short], "arg1", "arg2"]))},
+      ?_assertMatch({ok, {[short], ["arg1", "arg2"]}}, parse([Short], [[$-, ?SHORT(Short)], "arg1", "arg2"]))},
      {"Short form option and arguments (unsorted)",
-      ?_assertMatch({ok, {[short], ["arg1", "arg2"]}}, parse([Short], ["arg1", [$-, Short#option.short], "arg2"]))},
+      ?_assertMatch({ok, {[short], ["arg1", "arg2"]}}, parse([Short], ["arg1", [$-, ?SHORT(Short)], "arg2"]))},
      %% Options with only the long form
-     {Long#option.help,            ?_assertMatch({ok, {[long], []}}, parse([Long], ["--long"]))},
-     {LongArg#option.help,         ?_assertMatch({ok, {[{long_arg, "value"}], []}}, parse([LongArg], ["--long-arg", "value"]))},
-     {LongDefArg#option.help,      ?_assertMatch({ok, {[{long_def_arg, "default-long"}], []}}, parse([LongDefArg], []))},
-     {LongInt#option.help,         ?_assertMatch({ok, {[{long_int, 100}], []}}, parse([LongInt], ["--long-int", "100"]))},
+     {?HELP(Long),            ?_assertMatch({ok, {[long], []}}, parse([Long], ["--long"]))},
+     {?HELP(LongArg),         ?_assertMatch({ok, {[{long_arg, "value"}], []}}, parse([LongArg], ["--long-arg", "value"]))},
+     {?HELP(LongDefArg),      ?_assertMatch({ok, {[{long_def_arg, "default-long"}], []}}, parse([LongDefArg], []))},
+     {?HELP(LongInt),         ?_assertMatch({ok, {[{long_int, 100}], []}}, parse([LongInt], ["--long-int", "100"]))},
      {"Long form option and arguments",
       ?_assertMatch({ok, {[long], ["arg1", "arg2"]}}, parse([Long], ["--long", "arg1", "arg2"]))},
      {"Long form option and arguments (unsorted)",
       ?_assertMatch({ok, {[long], ["arg1", "arg2"]}}, parse([Long], ["arg1", "--long", "arg2"]))},
      %% Options with both the short and long form
-     {ShortLong#option.help,       ?_assertMatch({ok, {[short_long], []}}, parse([ShortLong], [[$-, ShortLong#option.short]]))},
-     {ShortLong#option.help,       ?_assertMatch({ok, {[short_long], []}}, parse([ShortLong], ["--short-long"]))},
-     {ShortLongArg#option.help,    ?_assertMatch({ok, {[{short_long_arg, "value"}], []}}, parse([ShortLongArg], [[$-, ShortLongArg#option.short], "value"]))},
-     {ShortLongArg#option.help,    ?_assertMatch({ok, {[{short_long_arg, "value"}], []}}, parse([ShortLongArg], ["--short-long-arg", "value"]))},
-     {ShortLongDefArg#option.help, ?_assertMatch({ok, {[{short_long_def_arg, "default-short-long"}], []}}, parse([ShortLongDefArg], []))},
-     {ShortLongInt#option.help,    ?_assertMatch({ok, {[{short_long_int, 1234}], []}}, parse([ShortLongInt], [[$-, ShortLongInt#option.short], "1234"]))},
-     {ShortLongInt#option.help,    ?_assertMatch({ok, {[{short_long_int, 1234}], []}}, parse([ShortLongInt], ["--short-long-int", "1234"]))},
+     {?HELP(ShortLong),       ?_assertEqual({ok, {[short_long], []}}, parse([ShortLong], [[$-, ?SHORT(ShortLong)]]))},
+     {?HELP(ShortLong),       ?_assertMatch({ok, {[short_long], []}}, parse([ShortLong], ["--short-long"]))},
+     {?HELP(ShortLongArg),    ?_assertEqual({ok, {[{short_long_arg, "value"}], []}}, parse([ShortLongArg], [[$-, ?SHORT(ShortLongArg)], "value"]))},
+     {?HELP(ShortLongArg),    ?_assertMatch({ok, {[{short_long_arg, "value"}], []}}, parse([ShortLongArg], ["--short-long-arg", "value"]))},
+     {?HELP(ShortLongDefArg), ?_assertMatch({ok, {[{short_long_def_arg, "default-short-long"}], []}}, parse([ShortLongDefArg], []))},
+     {?HELP(ShortLongInt),    ?_assertEqual({ok, {[{short_long_int, 1234}], []}}, parse([ShortLongInt], [[$-, ?SHORT(ShortLongInt)], "1234"]))},
+     {?HELP(ShortLongInt),    ?_assertMatch({ok, {[{short_long_int, 1234}], []}}, parse([ShortLongInt], ["--short-long-int", "1234"]))},
      %% Non-option arguments
-     {NonOptArg#option.help,       ?_assertMatch({ok, {[{non_opt_arg, "value"}], []}}, parse([NonOptArg], ["value"]))},
-     {NonOptInt#option.help,       ?_assertMatch({ok, {[{non_opt_int, 1234}], []}}, parse([NonOptInt], ["1234"]))},
+     {?HELP(NonOptArg),       ?_assertMatch({ok, {[{non_opt_arg, "value"}], []}}, parse([NonOptArg], ["value"]))},
+     {?HELP(NonOptInt),       ?_assertMatch({ok, {[{non_opt_int, 1234}], []}}, parse([NonOptInt], ["1234"]))},
      {"Declared and undeclared non-option arguments",
      ?_assertMatch({ok, {[{non_opt_arg, "arg1"}], ["arg2", "arg3"]}}, parse([NonOptArg], ["arg1", "arg2", "arg3"]))},
      %% Combined
      {"Combined short, long and non-option arguments",
       ?_assertEqual({ok, {CombinedOpts, CombinedRest}}, parse(CombinedOptSpecs, CombinedArgs))},
      {"Option with only short form and invalid integer argument",
-      ?_assertEqual({error, {invalid_option_arg, {ShortInt#option.name, "value"}}}, parse([ShortInt], [[$-, ShortInt#option.short], "value"]))}
+      ?_assertEqual({error, {invalid_option_arg, {?NAME(ShortInt), "value"}}}, parse([ShortInt], [[$-, ?SHORT(ShortInt)], "value"]))}
     ].
