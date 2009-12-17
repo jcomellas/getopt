@@ -16,10 +16,9 @@
 -author('juanjo@comellas.org').
 
 main([]) ->
-    getopt:usage(option_spec_list(), "ex1.escript");
+    getopt:usage(option_spec_list(), escript:script_name());
 main(Args) ->
     OptSpecList = option_spec_list(),
-
     io:format("For command line: ~p~n"
               "getopt:parse/2 returns:~n~n", [Args]),
     case getopt:parse(OptSpecList, Args) of
