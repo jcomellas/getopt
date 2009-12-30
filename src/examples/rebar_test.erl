@@ -8,13 +8,13 @@
 %%% a copy of the New BSD license with this software. If not, it can be
 %%% retrieved from: http://www.opensource.org/licenses/bsd-license.php
 %%%-------------------------------------------------------------------
--module(ex1).
+-module(rebar_test).
 -author('juanjo@comellas.org').
 
 -export([test/0, test/1]).
 
 test() ->
-    test("-U myuser -P mypassword --host myhost -x -o myfile.dump mydb dummy1").
+    test("-f verbose=1 --quiet=on dummy1 dummy2").
 
 
 test(CmdLine) ->
@@ -32,15 +32,10 @@ test(CmdLine) ->
 
 
 option_spec_list() ->
-    CurrentUser = os:getenv("USER"),
     [
      %% {Name,     ShortOpt,  LongOpt,       ArgSpec,               HelpMsg}
-     {help,        $?,        "help",        undefined,             "Show the program options"},
-     {username,    $U,        "username",    string,                "Username to connect to the database"},
-     {password,    $P,        "password",    {string, CurrentUser}, "Password to connect to the database"},
-     {host,        $h,        "host",        {string, "localhost"}, "Database server host name or IP address"},
-     {port,        $p,        "port",        {integer, 1000},       "Database server port"},
-     {output_file, $o,        "output-file", string,                "File where the data will be saved to"},
-     {xml,         $x,        "xml",         undefined,             "Output data as XML"},
-     {dbname,      undefined, undefined,     string,                "Database name"}
+     {help,        $h,        "help",        undefined,             "Show the program options"},
+     {verbose,     $v,        "verbose",     {boolean, false},      "Be verbose about what gets done"},
+     {quiet,       $q,        "quiet",       {boolean, false},      "Be quiet about what gets done"},
+     {force,       $f,        "force",       {boolean, false},      "Force"}
     ].

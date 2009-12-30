@@ -11,7 +11,7 @@
 -module(getopt).
 -author('juanjo@comellas.org').
 
--export([parse/2, usage/2]).
+-export([parse/2, usage/2, is_option/1]).
 
 
 -define(TAB_LENGTH, 8).
@@ -129,11 +129,24 @@ get_option(OptSpecList, OptStr, FieldPos, OptName, Tail) ->
                 undefined ->
                     {Name, Tail};
                 _ ->
+                    ArgSpecType = arg_spec_type(ArgSpec),
                     case Tail of
                         [Arg | Tail1] ->
-                            {convert_option_arg(OptSpec, Arg), Tail1};
+                            case (ArgSpecType =:= boolean) andalso is_option(Arg) of
+                                %% Special case for booleans: when the next string
+                                %% is an option we assume the value is 'true'.
+                                true ->
+                                    {{Name, true}, Tail};
+                                _ ->
+                                    {convert_option_arg(OptSpec, Arg), Tail1}
+                            end;
                         [] ->
-                            throw({error, {missing_option_arg, Name}})
+                            case ArgSpecType of
+                                boolean ->
+                                    {{Name, true}, Tail};
+                                _ ->
+                                    throw({error, {missing_option_arg, Name}})
+                            end
                     end
             end;
         false ->
@@ -181,8 +194,15 @@ get_option_no_arg(OptSpecList, OptStr, OptName, FieldPos) ->
     case lists:keysearch(OptName, FieldPos, OptSpecList) of
         {value, {Name, _Short, _Long, undefined, _Help}} ->
             Name;
-        {value, {Name, _Short, _Long, _ArgSpec, _Help}} ->
-            throw({error, {missing_option_arg, Name}});
+        {value, {Name, _Short, _Long, ArgSpec, _Help}} ->
+            case arg_spec_type(ArgSpec) of
+                %% Special case for booleans: if there is no argument we assume
+                %% the value is 'true'.
+                boolean ->
+                    {Name, true};
+                _ ->
+                    throw({error, {missing_option_arg, Name}})
+            end;
         false ->
             throw({error, {invalid_option, OptStr}})
     end.
@@ -218,22 +238,28 @@ append_default_args([], OptAcc) ->
     OptAcc.
 
 
+-spec is_option(string()) -> boolean().
+is_option([Char | _Tail] = OptStr) ->
+    (Char =:= $-) orelse lists:member($=, OptStr).
+    
+
 -spec convert_option_arg(option_spec(), string()) -> [option()].
 %% @doc Convert the argument passed in the command line to the data type
-%%      indicated byt the argument specification.
+%%      indicated by the argument specification.
 convert_option_arg({Name, _Short, _Long, ArgSpec, _Help}, Arg) ->
     try
-        Converted = case ArgSpec of
-                        {Type, _DefaultArg} ->
-                            to_type(Type, Arg);
-                        Type when is_atom(Type) ->
-                            to_type(Type, Arg)
-                    end,
-        {Name, Converted}
+        {Name, to_type(arg_spec_type(ArgSpec), Arg)}
     catch
         error:_ ->
             throw({error, {invalid_option_arg, {Name, Arg}}})
     end.
+
+
+-spec arg_spec_type(arg_spec()) -> arg_type() | undefined.
+arg_spec_type({Type, _DefaultArg}) ->
+    Type;
+arg_spec_type(Type) when is_atom(Type) ->
+    Type.
 
 
 -spec to_type(atom(), string()) -> arg_value().
