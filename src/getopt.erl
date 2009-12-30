@@ -72,7 +72,15 @@ parse(OptSpecList, CmdLine) ->
     {ok, {[option()], [string()]}} | {error, {Reason :: atom(), Data:: any()}}.
 %% Process long options.
 parse(OptSpecList, OptAcc, ArgAcc, ArgPos, [[$-, $- | LongName] = OptStr | Tail]) ->
-    {Option, Tail1} = get_option(OptSpecList, OptStr, LongName, ?OPT_LONG, Tail),
+    {Option, Tail1} = 
+        case string:tokens(LongName, "=") of
+            [_LongName1] ->
+                get_option(OptSpecList, OptStr, LongName, ?OPT_LONG, Tail);
+            [LongName1, Arg] ->
+                {get_option_embedded_arg(OptSpecList, OptStr, LongName1, Arg), Tail};
+            _ ->
+                throw({error, {invalid_option_arg, OptStr}})
+        end,
     parse(OptSpecList, [Option | OptAcc], ArgAcc, ArgPos, Tail1);
 %% Process short options.
 parse(OptSpecList, OptAcc, ArgAcc, ArgPos, [[$-, ShortName] = OptStr | Tail]) ->
@@ -114,9 +122,26 @@ get_option(OptSpecList, OptStr, OptName, FieldPos, Tail) ->
                     case Tail of
                         [Arg | Tail1] ->
                             {convert_option_arg(OptSpec, Arg), Tail1};
-                                    [] ->
+                        [] ->
                             throw({error, {missing_option_arg, Name}})
                     end
+            end;
+        false ->
+            throw({error, {invalid_option, OptStr}})
+    end.
+
+-spec get_option_embedded_arg([option_spec()], string(), string(), string()) ->  option().
+%% @doc Retrieve the specification corresponding to an option matching a string
+%%      received on the command line that had its argument assigned within the
+%%      same string (e.g. "--verbose=true").
+get_option_embedded_arg(OptSpecList, OptStr, OptName, Arg) ->
+    case lists:keysearch(OptName, ?OPT_LONG, OptSpecList) of
+        {value, {_Name, _Short, _Long, ArgSpec, _Help} = OptSpec} ->
+            case ArgSpec of
+                undefined ->
+                    throw({error, {invalid_option_arg, OptStr}});
+                _ ->
+                    convert_option_arg(OptSpec, Arg)
             end;
         false ->
             throw({error, {invalid_option, OptStr}})
@@ -195,7 +220,8 @@ to_type(boolean, Arg) ->
     LowerArg = string:to_lower(Arg),
     (LowerArg =:= "true") orelse (LowerArg =:= "t") orelse
     (LowerArg =:= "yes") orelse (LowerArg =:= "y") orelse
-    (LowerArg =:= "on") orelse (LowerArg =:= "enabled");
+    (LowerArg =:= "on") orelse (LowerArg =:= "enabled") orelse
+    (LowerArg =:= "1");
 to_type(_Type, Arg) ->
     Arg.
 

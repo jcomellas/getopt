@@ -126,8 +126,13 @@ parse_1_test_() ->
      %% Options with only the long form
      {?HELP(Long),            ?_assertMatch({ok, {[long], []}}, parse([Long], ["--long"]))},
      {?HELP(LongArg),         ?_assertMatch({ok, {[{long_arg, "value"}], []}}, parse([LongArg], ["--long-arg", "value"]))},
+     {?HELP(LongArg),         ?_assertMatch({ok, {[{long_arg, "value"}], []}}, parse([LongArg], ["--long-arg=value"]))},
      {?HELP(LongDefArg),      ?_assertMatch({ok, {[{long_def_arg, "default-long"}], []}}, parse([LongDefArg], []))},
      {?HELP(LongInt),         ?_assertMatch({ok, {[{long_int, 100}], []}}, parse([LongInt], ["--long-int", "100"]))},
+     {?HELP(LongInt),         ?_assertMatch({ok, {[{long_int, 100}], []}}, parse([LongInt], ["--long-int=100"]))},
+     %% Options with only the long form (expected failures)
+     {?HELP(LongArg) ++ " (XFAIL)",
+      ?_assertEqual({error, {invalid_option_arg, "--long-arg=value=1"}}, parse([LongArg], ["--long-arg=value=1"]))},
      {"Long form option and arguments",
       ?_assertMatch({ok, {[long], ["arg1", "arg2"]}}, parse([Long], ["--long", "arg1", "arg2"]))},
      {"Long form option and arguments (unsorted)",
@@ -137,9 +142,11 @@ parse_1_test_() ->
      {?HELP(ShortLong),       ?_assertMatch({ok, {[short_long], []}}, parse([ShortLong], ["--short-long"]))},
      {?HELP(ShortLongArg),    ?_assertEqual({ok, {[{short_long_arg, "value"}], []}}, parse([ShortLongArg], [[$-, ?SHORT(ShortLongArg)], "value"]))},
      {?HELP(ShortLongArg),    ?_assertMatch({ok, {[{short_long_arg, "value"}], []}}, parse([ShortLongArg], ["--short-long-arg", "value"]))},
+     {?HELP(ShortLongArg),    ?_assertMatch({ok, {[{short_long_arg, "value"}], []}}, parse([ShortLongArg], ["--short-long-arg=value"]))},
      {?HELP(ShortLongDefArg), ?_assertMatch({ok, {[{short_long_def_arg, "default-short-long"}], []}}, parse([ShortLongDefArg], []))},
      {?HELP(ShortLongInt),    ?_assertEqual({ok, {[{short_long_int, 1234}], []}}, parse([ShortLongInt], [[$-, ?SHORT(ShortLongInt)], "1234"]))},
      {?HELP(ShortLongInt),    ?_assertMatch({ok, {[{short_long_int, 1234}], []}}, parse([ShortLongInt], ["--short-long-int", "1234"]))},
+     {?HELP(ShortLongInt),    ?_assertMatch({ok, {[{short_long_int, 1234}], []}}, parse([ShortLongInt], ["--short-long-int=1234"]))},
      %% Non-option arguments
      {?HELP(NonOptArg),       ?_assertMatch({ok, {[{non_opt_arg, "value"}], []}}, parse([NonOptArg], ["value"]))},
      {?HELP(NonOptInt),       ?_assertMatch({ok, {[{non_opt_int, 1234}], []}}, parse([NonOptInt], ["1234"]))},

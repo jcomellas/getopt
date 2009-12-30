@@ -56,7 +56,7 @@ The fields of the record are:
   - ``Short``: character for the short option (e.g. $i for -i).
   - ``Long``: string for the long option (e.g. "info" for --info).
   - ``ArgSpec``: data type and optional default value the argument will be converted to.
-  - ``Help``: help message that is shown for the option when usage/2 is called.
+  - ``Help``: help message that is shown for the option when ``usage/2`` is called.
 
 The second parameter holds the list of arguments as passed to the ``main/1``
 function in escripts. e.g.
@@ -85,11 +85,11 @@ e.g. For a program named ``ex.escript`` with the following option specifications
 
 And this command line:
 
-    Args = "-h myhost --port 1000 -x myfile.txt dummy1 dummy2"
+    Args = "-h myhost --port=1000 -x myfile.txt dummy1 dummy2"
 
 Which could also be passed in the format the ``main/1`` function receives the arguments in escripts:
 
-    Args = ["-h", "myhost", "--port", "1000", "-x", "myfile.txt", "dummy1", "dummy2"].
+    Args = ["-h", "myhost", "--port=1000", "-x", "myfile.txt", "dummy1", "dummy2"].
 
 The call to ``getopt:parse/2``:
 
@@ -110,7 +110,7 @@ Also, the call to ``getopt:usage/2``:
 
 Will show (on *stdout*):
 
-    Usage: ex.escript [-h <host>] [-p <port>] [--dbname <dbname>] [-x] <file>
+    Usage: ex1 [-h <host>] [-p <port>] [--dbname <dbname>] [-x] <file>
 
       -h, --host                    Database server host
       -p, --port                    Database server port
