@@ -11,6 +11,9 @@
 -module(getopt).
 -author('juanjo@comellas.org').
 
+-export([parse/2, usage/2]).
+
+
 -define(TAB_LENGTH, 8).
 %% Indentation of the help messages in number of tabs.
 -define(INDENTATION, 3).
@@ -44,8 +47,6 @@
                    Help    :: string() | undefined
                   }.
 
--export([parse/2, usage/2]).
-
 
 -spec parse([option_spec()], string() | [string()]) -> {ok, {[option()], [string()]}} | {error, {Reason :: atom(), Data :: any()}}.
 %%--------------------------------------------------------------------
@@ -73,13 +74,13 @@ parse(OptSpecList, CmdLine) ->
 %% Process long options.
 parse(OptSpecList, OptAcc, ArgAcc, ArgPos, [[$-, $- | LongName] = OptStr | Tail]) ->
     {Option, Tail1} = 
-        case string:tokens(LongName, "=") of
-            [_LongName1] ->
-                get_option(OptSpecList, OptStr, LongName, ?OPT_LONG, Tail);
-            [LongName1, Arg] ->
+        case split_embedded_arg(LongName) of
+            {LongName1, Arg} ->
+                %% Get option that has its argument within the same string
+                %% separated by an equal ('=') character.
                 {get_option_embedded_arg(OptSpecList, OptStr, LongName1, Arg), Tail};
-            _ ->
-                throw({error, {invalid_option_arg, OptStr}})
+            _LongName1 ->
+                get_option(OptSpecList, OptStr, LongName, ?OPT_LONG, Tail)
         end,
     parse(OptSpecList, [Option | OptAcc], ArgAcc, ArgPos, Tail1);
 %% Process short options.
@@ -130,6 +131,7 @@ get_option(OptSpecList, OptStr, OptName, FieldPos, Tail) ->
             throw({error, {invalid_option, OptStr}})
     end.
 
+
 -spec get_option_embedded_arg([option_spec()], string(), string(), string()) ->  option().
 %% @doc Retrieve the specification corresponding to an option matching a string
 %%      received on the command line that had its argument assigned within the
@@ -147,6 +149,21 @@ get_option_embedded_arg(OptSpecList, OptStr, OptName, Arg) ->
             throw({error, {invalid_option, OptStr}})
     end.
 
+
+-spec split_embedded_arg(string()) -> {Name :: string(), Arg :: string()} | string().
+%% @doc Split an option string that may contain and option with its argument
+%%      separated by an equal ('=') character (e.g. "port=1000").
+split_embedded_arg(OptStr) ->
+    split_embedded_arg(OptStr, OptStr, []).
+
+split_embedded_arg(_OptStr, [$= | Tail], Acc) ->
+    {lists:reverse(Acc), Tail};
+split_embedded_arg(OptStr, [Char | Tail], Acc) ->
+    split_embedded_arg(OptStr, Tail, [Char | Acc]);
+split_embedded_arg(OptStr, [], _Acc) ->
+    OptStr.
+
+
 -spec get_option_no_arg([option_spec()], string(), string() | char(), integer()) -> option().
 %% @doc Retrieve the specification corresponding to an option that has no
 %%      argument and matches a string received on the command line.
@@ -159,6 +176,7 @@ get_option_no_arg(OptSpecList, OptStr, OptName, FieldPos) ->
         false ->
             throw({error, {invalid_option, OptStr}})
     end.
+
 
 -spec find_non_option_arg([option_spec()], integer()) -> {value, option_spec()} | false.
 %% @doc Find the option for the discrete argument in position specified in the
@@ -206,6 +224,7 @@ convert_option_arg({Name, _Short, _Long, ArgSpec, _Help}, Arg) ->
         error:_ ->
             throw({error, {invalid_option_arg, {Name, Arg}}})
     end.
+
 
 -spec to_type(atom(), string()) -> arg_value().
 to_type(binary, Arg) ->

@@ -127,12 +127,10 @@ parse_1_test_() ->
      {?HELP(Long),            ?_assertMatch({ok, {[long], []}}, parse([Long], ["--long"]))},
      {?HELP(LongArg),         ?_assertMatch({ok, {[{long_arg, "value"}], []}}, parse([LongArg], ["--long-arg", "value"]))},
      {?HELP(LongArg),         ?_assertMatch({ok, {[{long_arg, "value"}], []}}, parse([LongArg], ["--long-arg=value"]))},
+     {?HELP(LongArg),         ?_assertMatch({ok, {[{long_arg, "value=1"}], []}}, parse([LongArg], ["--long-arg=value=1"]))},
      {?HELP(LongDefArg),      ?_assertMatch({ok, {[{long_def_arg, "default-long"}], []}}, parse([LongDefArg], []))},
      {?HELP(LongInt),         ?_assertMatch({ok, {[{long_int, 100}], []}}, parse([LongInt], ["--long-int", "100"]))},
      {?HELP(LongInt),         ?_assertMatch({ok, {[{long_int, 100}], []}}, parse([LongInt], ["--long-int=100"]))},
-     %% Options with only the long form (expected failures)
-     {?HELP(LongArg) ++ " (XFAIL)",
-      ?_assertEqual({error, {invalid_option_arg, "--long-arg=value=1"}}, parse([LongArg], ["--long-arg=value=1"]))},
      {"Long form option and arguments",
       ?_assertMatch({ok, {[long], ["arg1", "arg2"]}}, parse([Long], ["--long", "arg1", "arg2"]))},
      {"Long form option and arguments (unsorted)",
