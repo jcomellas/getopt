@@ -72,20 +72,20 @@ parse(OptSpecList, CmdLine) ->
 -spec parse([option_spec()], [option()], [string()], integer(), [string()]) ->
     {ok, {[option()], [string()]}} | {error, {Reason :: atom(), Data:: any()}}.
 %% Process long options.
-parse(OptSpecList, OptAcc, ArgAcc, ArgPos, [[$-, $- | LongName] = OptStr | Tail]) ->
+parse(OptSpecList, OptAcc, ArgAcc, ArgPos, [[$-, $- | Name] = OptStr | Tail]) ->
     {Option, Tail1} = 
-        case split_embedded_arg(LongName) of
-            {LongName1, Arg} ->
+        case split_embedded_arg(Name) of
+            {Name1, Arg} ->
                 %% Get option that has its argument within the same string
                 %% separated by an equal ('=') character.
-                {get_option_embedded_arg(OptSpecList, OptStr, LongName1, Arg), Tail};
-            _LongName1 ->
-                get_option(OptSpecList, OptStr, LongName, ?OPT_LONG, Tail)
+                {get_option_embedded_arg(OptSpecList, OptStr, ?OPT_LONG, Name1, Arg), Tail};
+            _Name1 ->
+                get_option(OptSpecList, OptStr, ?OPT_LONG, Name, Tail)
         end,
     parse(OptSpecList, [Option | OptAcc], ArgAcc, ArgPos, Tail1);
 %% Process short options.
 parse(OptSpecList, OptAcc, ArgAcc, ArgPos, [[$-, ShortName] = OptStr | Tail]) ->
-    {Option, Tail1} = get_option(OptSpecList, OptStr, ShortName, ?OPT_SHORT, Tail),
+    {Option, Tail1} = get_option(OptSpecList, OptStr, ?OPT_SHORT, ShortName, Tail),
     parse(OptSpecList, [Option | OptAcc], ArgAcc, ArgPos, Tail1);
 %% Process multiple short options with no argument.
 parse(OptSpecList, OptAcc, ArgAcc, ArgPos, [[$- | ShortNameList] = OptStr | Tail]) ->
@@ -96,12 +96,21 @@ parse(OptSpecList, OptAcc, ArgAcc, ArgPos, [[$- | ShortNameList] = OptStr | Tail
           end, OptAcc, ShortNameList),
     parse(OptSpecList, NewOptAcc, ArgAcc, ArgPos, Tail);
 %% Process non-option arguments.
-parse(OptSpecList, OptAcc, ArgAcc, ArgPos, [Arg | Tail]) ->
-    case find_non_option_arg(OptSpecList, ArgPos) of
-        {value, OptSpec} when ?IS_OPT_SPEC(OptSpec) ->
-            parse(OptSpecList, [convert_option_arg(OptSpec, Arg) | OptAcc], ArgAcc, ArgPos + 1, Tail);
-        false ->
-            parse(OptSpecList, OptAcc, [Arg | ArgAcc], ArgPos, Tail)
+parse(OptSpecList, OptAcc, ArgAcc, ArgPos, [OptStr | Tail]) ->
+    case split_embedded_arg(OptStr) of
+        {Name, Arg} ->
+            %% Get option that has its argument within the same string
+            %% separated by an equal ('=') character.
+            parse(OptSpecList, [get_option_embedded_arg(OptSpecList, OptStr, ?OPT_LONG, Name, Arg) | OptAcc],
+                  ArgAcc, ArgPos, Tail);
+        Arg ->
+            case find_non_option_arg(OptSpecList, ArgPos) of
+                {value, OptSpec} when ?IS_OPT_SPEC(OptSpec) ->
+                    parse(OptSpecList, [convert_option_arg(OptSpec, Arg) | OptAcc],
+                          ArgAcc, ArgPos + 1, Tail);
+                false ->
+                    parse(OptSpecList, OptAcc, [Arg | ArgAcc], ArgPos, Tail)
+            end
     end;
 parse(OptSpecList, OptAcc, ArgAcc, _ArgPos, []) ->
     %% Once we have completed gathering the options we add the ones that were
@@ -109,11 +118,11 @@ parse(OptSpecList, OptAcc, ArgAcc, _ArgPos, []) ->
     {ok, {lists:reverse(append_default_args(OptSpecList, OptAcc)), lists:reverse(ArgAcc)}}.
 
 
--spec get_option([option_spec()], string(), string() | char(), integer(), [string()]) ->
+-spec get_option([option_spec()], string(), integer(), string() | char(), [string()]) ->
     {option(), [string()]}.
 %% @doc Retrieve the specification corresponding to an option matching a string
 %%      received on the command line.
-get_option(OptSpecList, OptStr, OptName, FieldPos, Tail) ->
+get_option(OptSpecList, OptStr, FieldPos, OptName, Tail) ->
     case lists:keysearch(OptName, FieldPos, OptSpecList) of
         {value, {Name, _Short, _Long, ArgSpec, _Help} = OptSpec} ->
             case ArgSpec of
@@ -132,12 +141,13 @@ get_option(OptSpecList, OptStr, OptName, FieldPos, Tail) ->
     end.
 
 
--spec get_option_embedded_arg([option_spec()], string(), string(), string()) ->  option().
+-spec get_option_embedded_arg([option_spec()], string(), integer(), string(),
+                              string()) ->  option().
 %% @doc Retrieve the specification corresponding to an option matching a string
 %%      received on the command line that had its argument assigned within the
-%%      same string (e.g. "--verbose=true").
-get_option_embedded_arg(OptSpecList, OptStr, OptName, Arg) ->
-    case lists:keysearch(OptName, ?OPT_LONG, OptSpecList) of
+%%      same string (e.g. "verbose=true").
+get_option_embedded_arg(OptSpecList, OptStr, FieldPos, OptName, Arg) ->
+    case lists:keysearch(OptName, FieldPos, OptSpecList) of
         {value, {_Name, _Short, _Long, ArgSpec, _Help} = OptSpec} ->
             case ArgSpec of
                 undefined ->
