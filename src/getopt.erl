@@ -11,7 +11,7 @@
 -module(getopt).
 -author('juanjo@comellas.org').
 
--export([parse/2, usage/2, is_option/1]).
+-export([parse/2, usage/2]).
 
 
 -define(TAB_LENGTH, 8).
@@ -132,7 +132,7 @@ get_option(OptSpecList, OptStr, FieldPos, OptName, Tail) ->
                     ArgSpecType = arg_spec_type(ArgSpec),
                     case Tail of
                         [Arg | Tail1] ->
-                            case (ArgSpecType =:= boolean) andalso is_option(Arg) of
+                            case (ArgSpecType =:= boolean) andalso not is_boolean_arg(Arg) of
                                 %% Special case for booleans: when the next string
                                 %% is an option we assume the value is 'true'.
                                 true ->
@@ -238,9 +238,9 @@ append_default_args([], OptAcc) ->
     OptAcc.
 
 
--spec is_option(string()) -> boolean().
-is_option([Char | _Tail] = OptStr) ->
-    (Char =:= $-) orelse lists:member($=, OptStr).
+%% -spec is_option(string()) -> boolean().
+%% is_option([Char | _Tail] = OptStr) ->
+%%     (Char =:= $-) orelse lists:member($=, OptStr).
     
 
 -spec convert_option_arg(option_spec(), string()) -> [option()].
@@ -272,14 +272,19 @@ to_type(integer, Arg) ->
 to_type(float, Arg) ->
     list_to_float(Arg);
 to_type(boolean, Arg) ->
+    is_boolean_arg(Arg);
+to_type(_Type, Arg) ->
+    Arg.
+
+
+-spec is_boolean_arg(string()) -> boolean().
+is_boolean_arg(Arg) ->
     LowerArg = string:to_lower(Arg),
     (LowerArg =:= "true") orelse (LowerArg =:= "t") orelse
     (LowerArg =:= "yes") orelse (LowerArg =:= "y") orelse
     (LowerArg =:= "on") orelse (LowerArg =:= "enabled") orelse
-    (LowerArg =:= "1");
-to_type(_Type, Arg) ->
-    Arg.
-
+    (LowerArg =:= "1").
+    
 
 -spec usage([option_spec()], string()) -> ok.
 %%--------------------------------------------------------------------
