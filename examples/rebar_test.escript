@@ -34,6 +34,7 @@ option_spec_list() ->
     [
      %% {Name,     ShortOpt,  LongOpt,       ArgSpec,               HelpMsg}
      {help,        $h,        "help",        undefined,             "Show the program options"},
+     {jobs,        $j,        "jobs",        {integer, 1},          "Number of concurrent jobs"},
      {verbose,     $v,        "verbose",     {boolean, false},      "Be verbose about what gets done"},
      {quiet,       $q,        "quiet",       {boolean, false},      "Be quiet about what gets done"},
      {force,       $f,        "force",       {boolean, false},      "Force"}
