@@ -1,7 +1,7 @@
 Getopt for Erlang
 =================
 
-Command-line parsing module that uses a syntax similar to that of GNU Getopt.
+Command-line parsing module that uses a syntax similar to that of GNU *getopt*.
 
 
 Requirements
@@ -26,12 +26,18 @@ To build the (very) limited documentation run ``make docs``.
 Usage
 -----
 
-The *getopt* module provides two functions:
+The *getopt* module provides four functions:
 
     parse([{Name, Short, Long, ArgSpec, Help}], Args :: string() | [string()]) ->
         {ok, {Options, NonOptionArgs}} | {error, {Reason, Data}}
 
     usage([{Name, Short, Long, ArgSpec, Help}], ProgramName :: string()) -> ok
+
+    usage([{Name, Short, Long, ArgSpec, Help}], ProgramName :: string(),
+          CmdLineTail :: string()) -> ok
+
+    usage([{Name, Short, Long, ArgSpec, Help}], ProgramName :: string(),
+          CmdLineTail :: string(), OptionsTail :: [{string(), string}]) -> ok
 
 The ``parse/2`` function receives a list of tuples with the command line option
 specifications. The type specification for the tuple is:
@@ -50,7 +56,7 @@ specifications. The type specification for the tuple is:
                        Help    :: string() | undefined
                       }.
 
-The fields of the record are:
+The elements of the tuple are:
 
   - ``Name``: name of the option.
   - ``Short``: character for the short option (e.g. $i for -i).
@@ -58,10 +64,12 @@ The fields of the record are:
   - ``ArgSpec``: data type and optional default value the argument will be converted to.
   - ``Help``: help message that is shown for the option when ``usage/2`` is called.
 
-The second parameter holds the list of arguments as passed to the ``main/1``
-function in escripts. e.g.
+e.g.
 
      {port, $p, "port", {integer, 5432}, "Database server port"}
+
+The second parameter receives the list of arguments as passed to the ``main/1``
+function in escripts or the unparsed command line as a string. 
 
 If the function is successful parsing the command line arguments it will return
 a tuple containing the parsed options and the non-option arguments. The options
@@ -74,53 +82,168 @@ all the arguments that did not have corresponding options.
 
 e.g. For a program named ``ex.escript`` with the following option specifications:
 
-    OptSpec =
+    OptSpecList =
         [
-         {host,   $h,        "host",    {string, "localhost"}, "Database server host"},
-         {port,   $p,        "port",    integer,               "Database server port"},
-         {dbname, undefined, "dbname",  {string, "users"},     "Database name"},
-         {xml,    $x,        undefined, undefined,             "Output data in XML"},
-         {file,   undefined, undefined, string,                "Output file"}
+         {host,    $h,        "host",    {string, "localhost"}, "Database server host"},
+         {port,    $p,        "port",    integer,               "Database server port"},
+         {dbname,  undefined, "dbname",  {string, "users"},     "Database name"},
+         {xml,     $x,        undefined, undefined,             "Output data in XML"},
+         {verbose, $v,        "verbose", boolean,               "List all the actions executed"},
+         {file,    undefined, undefined, string,                "Output file"}
         ].
 
 And this command line:
 
-    Args = "-h myhost --port=1000 -x myfile.txt dummy1 dummy2"
+    Args = "-h myhost --port=1000 -x myfile.txt -v dummy1 dummy2"
 
 Which could also be passed in the format the ``main/1`` function receives the arguments in escripts:
 
-    Args = ["-h", "myhost", "--port=1000", "-x", "myfile.txt", "dummy1", "dummy2"].
+    Args = ["-h", "myhost", "--port=1000", "-x", "file.txt", "-v", "dummy1", "dummy2"].
 
 The call to ``getopt:parse/2``:
 
-    getopt:parse(OptSpec, Args).
+    getopt:parse(OptSpecList, Args).
 
 Will return:
 
     {ok,{[{host,"myhost"},
           {port,1000},
           xml,
-          {file,"myfile.txt"},
-          {dbname,"users"}],
+          {file,"file.txt"},
+          {dbname,"users"},
+          {verbose,true}],
          ["dummy1","dummy2"]}}
 
-Also, the call to ``getopt:usage/2``:
 
-    getopt:usage(OptSpec, "ex1").
+The other functions exported by the ``getopt`` module (``usage/2``, ``usage/3``
+and ``usage/4``) are used to show the command line syntax for the program.
+For example, given the above-mentioned option specifications, the call to
+``getopt:usage/2``:
+
+    getopt:usage(OptSpecList, "ex1").
 
 Will show (on *stdout*):
 
-    Usage: ex1 [-h <host>] [-p <port>] [--dbname <dbname>] [-x] <file>
+    Usage: ex1 [-h <host>] [-p <port>] [--dbname <dbname>] [-x] [-v] <file>
 
       -h, --host                    Database server host
       -p, --port                    Database server port
       --dbname                      Database name
       -x                            Output data in XML
+      -v                            List all the actions executed
       <file>                        Output file
 
+This call to ``getopt:usage/3`` will add a string after the usage command line:
 
-Known limitations
------------------
+    getopt:usage(OptSpecList, "ex1", "[var=value ...] [command ...]").
 
-  - The syntax for non-option arguments that start with '-' (e.g. -a -- -b)
-    is not supported yet.
+Will show (on *stdout*):
+
+    Usage: ex1 [-h <host>] [-p <port>] [--dbname <dbname>] [-x] [-v <verbose>] <file> [var=value ...] [command ...]
+    
+      -h, --host            Database server host
+      -p, --port            Database server port
+      --dbname              Database name
+      -x                    Output data in XML
+      -v, --verbose         List all the actions executed
+      <file>                Output file
+
+Whereas this call to ``getopt:usage/3`` will also add some lines to the options
+help text:
+
+    getopt:usage(OptSpecList, "ex1", "[var=value ...] [command ...]",
+                 [{"var=value", "Variables that will affect the execution (e.g. debug=1)"},
+                  {"command",   "Commands that will be executed (e.g. count)"}]).
+
+Will show (on *stdout*):
+
+    Usage: ex1 [-h <host>] [-p <port>] [--dbname <dbname>] [-x] [-v <verbose>] <file> [var=value ...] [command ...]
+    
+      -h, --host            Database server host
+      -p, --port            Database server port
+      --dbname              Database name
+      -x                    Output data in XML
+      -v, --verbose         List all the actions executed
+      <file>                Output file
+      var=value             Variables that will affect the execution (e.g. debug=1)
+      command               Commands that will be executed (e.g. count)
+
+
+Command-line Syntax
+-------------------
+
+The syntax supported by the ``getopt`` module is very similar to that followed
+by GNU programs, which is described [here](http://www.gnu.org/s/libc/manual/html_node/Argument-Syntax.html).
+
+Options can have both short (single character) and long (string) option names.
+
+A short option can have the following syntax:
+
+    -a         Single option 'a', no argument or implicit boolean argument
+    -a foo     Single option 'a', argument "foo"
+    -afoo      Single option 'a', argument "foo"
+    -abc       Multiple options: 'a'; 'b'; 'c'
+    -bcafoo    Multiple options: 'b'; 'c'; 'a' with argument "foo"
+
+A long option can have the following syntax:
+
+    --foo      Single option 'foo', no argument
+    --foo=bar  Single option 'foo', argument "bar"
+    --foo bar  Single option 'foo', argument "bar"
+
+We can also have options with neither short nor long option name. In this case,
+the options will be taken according to their position in the option specification
+list passed to ``getopt:/parse2``.
+
+For example, with the following option specifications:
+
+    OptSpecList =
+        [
+         {xml,         $x,        "xml",         undefined,             "Output data as XML"},
+         {dbname,      undefined, undefined,     string,                "Database name"},
+         {output_file, undefined, undefined,     string,                "File where the data will be saved to"}
+        ].
+
+And these arguments:
+
+    Args = "-x mydb file.out dummy1 dummy1".
+
+The call to ``getopt:parse/2``:
+
+    getopt:parse(OptSpecList, Args).
+
+Will return:
+
+    {ok,{[xml,{dbname,"mydb"},{output_file,"file.out"}],
+         ["dummy1","dummy1"]}}
+
+Finally, the string ``--`` is considered an option terminator (i.e. all
+arguments after it are considered non-option arguments) and the single ``-``
+character is considered as non-option argument too.
+
+
+Argument Types
+--------------
+
+The arguments allowed for options are: atom; binary; boolean; float; integer; string.
+The ``getopt`` module checks every argument to see if it can be converted to its
+correct type. In the case of boolean arguments, the following values (in lower or
+upper case) are considered ``true``:
+
+- true
+- t
+- yes
+- y
+- on
+- enabled
+- 1
+
+And these ones are considered ``false``:
+    
+- false
+- f
+- no
+- n
+- off
+- disabled
+- 0

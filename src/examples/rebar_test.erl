@@ -11,10 +11,10 @@
 -module(rebar_test).
 -author('juanjo@comellas.org').
 
--export([test/0, test/1]).
+-export([test/0, test/1, usage/0]).
 
 test() ->
-    test("-f verbose=1 --quiet=on dummy1 dummy2").
+    test("-f verbose=1 --quiet=on -j2 dummy1 dummy2").
 
 
 test(CmdLine) ->
@@ -27,16 +27,24 @@ test(CmdLine) ->
             io:format("Options:~n  ~p~n~nNon-option arguments:~n  ~p~n", [Options, NonOptArgs]);
         {error, {Reason, Data}} ->
             io:format("Error: ~s ~p~n~n", [Reason, Data]),
-            getopt:usage(OptSpecList, "ex1")
+            usage(OptSpecList)
     end.
 
 
+usage() ->
+    usage(option_spec_list()).
+
+usage(OptSpecList) ->
+    getopt:usage(OptSpecList, "rebar_test", "[var1=val1 ...] [command1 ...]",
+                 [{"var=value", "Variables that will affect the compilation (e.g. debug=1)"},
+                  {"command",   "Commands that will be executed by rebar (e.g. compile)"}]).
+
 option_spec_list() ->
+    CpuCount = erlang:system_info(logical_processors),
     [
      %% {Name,     ShortOpt,  LongOpt,       ArgSpec,               HelpMsg}
      {help,        $h,        "help",        undefined,             "Show the program options"},
-     {jobs,        $j,        "jobs",        {integer, 1},          "Number of concurrent jobs"},
+     {jobs,        $j,        "jobs",        {integer, CpuCount},   "Number of concurrent jobs"},
      {verbose,     $v,        "verbose",     {boolean, false},      "Be verbose about what gets done"},
-     {quiet,       $q,        "quiet",       {boolean, false},      "Be quiet about what gets done"},
      {force,       $f,        "force",       {boolean, false},      "Force"}
     ].
