@@ -2,6 +2,7 @@
 
 {application, getopt,
  [{description, "Options parser for Erlang"},
-  {vsn, "0.1"},
+  {vsn, "0.1.1"},
   {modules, [getopt]},
+  {registered, []},
   {applications, [kernel, stdlib]}]}.
