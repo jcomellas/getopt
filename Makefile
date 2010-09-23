@@ -20,13 +20,13 @@ doc:
 	@./rebar doc
 
 plt: compile
-	$(DIALYZER) --build_plt --output_plt $(PLT_FILE) --apps $(APPS) ebin
+	@$(DIALYZER) --build_plt --output_plt $(PLT_FILE) --apps $(APPS) ebin
 
 check_plt: compile
-	$(DIALYZER) --check_plt --plt $(PLT_FILE) --apps $(APPS) ebin
+	@$(DIALYZER) --check_plt --plt $(PLT_FILE) --apps $(APPS) ebin
 
 analyze: compile
-	$(DIALYZER) --plt $(PLT_FILE) $(DIALYZER_OPTS) -r ebin
+	@$(DIALYZER) --plt $(PLT_FILE) $(DIALYZER_OPTS) -r ebin
 
 clean:
 	@./rebar clean
