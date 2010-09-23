@@ -1,9 +1,11 @@
+2010-09-23  Juan Jose Comellas <juanjo@comellas.org>
+
+  * Released v0.3.0
+  * Added support for rebar.
+  * Cleaned up dialyzer warnings.
+
 2009-11-16  Juan Jose Comellas <juanjo@comellas.org>
 
-	* *: Released v0.1
-
-	* src/getopt.erl:
-	* src/test/getopt_test.erl:
-	* src/examples/ex1.erl:
-
-	Dropped record syntax for the option specifications to simplify	use from escripts.
+  * Released v0.1.0
+  * Dropped record syntax for the option specifications to simplify use
+    from escripts.
