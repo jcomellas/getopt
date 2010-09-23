@@ -1,36 +1,45 @@
-PROJECT=getopt
-ERL=erl
-ERLC=erlc -I include -v -o ebin
-SOURCES=src/*.erl
-EPATH=-pa ebin
-DOC_OPTS={dir, \"doc\"}, {includes, [\"include\"]}, {source_path, [\"include\", \"src\"]}
+APPLICATION := getopt
 
-all:
-	@mkdir -p ebin
-	@$(ERL) $(EPATH) -make
+ERL := erl
+EPATH := -pa ebin
+TEST_EPATH := -pa .eunit
 
-run: all
-	$(ERL) -sname "$(PROJECT)" $(EPATH)
+DIALYZER=dialyzer
+DIALYZER_OPTS=-Wno_return -Wrace_conditions -Wunderspecs -Wbehaviours
+PLT_FILE=.getopt_plt
+APPS=kernel stdlib
 
-test: all
-	@$(ERL) -noshell $(EPATH) -s $(PROJECT)_test test -s init stop
+.PHONY: all clean test
 
-example: all
-	@$(ERL) -noshell $(EPATH) -s ex1 test -s init stop
+all: compile
 
-docs: all
-	@$(ERL) -noshell $(EPATH) \
-		-eval "edoc:files(filelib:wildcard(\"$(SOURCES)\"), [$(DOC_OPTS)])" \
-		-s init stop
+compile:
+	@./rebar compile
+
+doc:
+	@./rebar doc
+
+plt: compile
+	$(DIALYZER) --build_plt --output_plt $(PLT_FILE) --apps $(APPS) ebin
+
+check_plt: compile
+	$(DIALYZER) --check_plt --plt $(PLT_FILE) --apps $(APPS) ebin
+
+analyze: compile
+	$(DIALYZER) --plt $(PLT_FILE) $(DIALYZER_OPTS) -r ebin
 
 clean:
-	rm -fv ebin/*.beam
-	rm -fv erl_crash.dump ebin/erl_crash.dump
+	@./rebar clean
 
-distclean:
-	rm -fv ebin/*.beam
-	rm -fv doc/*
-	rm -fv erl_crash.dump ebin/erl_crash.dump
+test:
+	@./rebar eunit
 
-docclean:
-	rm -fv doc/*
+dialyzer:
+	@./rebar analyze
+
+shell: compile
+	$(ERL) -sname $(APPLICATION) $(EPATH)
+
+testshell: test
+	$(ERL) -sname $(APPLICATION)_test $(TEST_EPATH)
+
