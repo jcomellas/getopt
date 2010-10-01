@@ -456,10 +456,10 @@ usage_options_reverse([{Name, Short, Long, _ArgSpec, Help} | Tail], Acc) ->
                 case Short of
                     % Only long form.
                     undefined ->
-                        [$-, $-, Long];
+                        [$-, $- | Long];
                     % Both short and long form.
                     _ ->
-                        [$-, Short, $,, $\s, $-, $-, Long]
+                        [$-, Short, $,, $\s, $-, $- | Long]
                 end
         end,
     usage_options_reverse(Tail, add_option_help(Prefix, Help, Acc));
