@@ -25,7 +25,7 @@
 -define(OPT_ARG, 4).
 -define(OPT_HELP, 5).
 
--define(IS_OPT_SPEC(Opt), (is_tuple(Opt) andalso (size(Opt) =:= ?OPT_HELP))).
+-define(IS_OPT_SPEC(Opt), (tuple_size(Opt) =:= ?OPT_HELP)).
 
 
 %% Atom indicating the data type that an argument can be converted to.
