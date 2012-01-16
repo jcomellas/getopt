@@ -53,6 +53,8 @@
                    ArgSpec :: arg_spec(),
                    Help    :: string() | undefined
                   }.
+%% Output streams
+-type output_stream() :: 'standard_io' | 'standard_error'.
 
 
 %% @doc  Parse the command line options and arguments returning a list of tuples
@@ -371,34 +373,58 @@ is_float_arg([]) ->
     true.
 
 
-%% @doc  Show a message on stdout indicating the command line options and
+%% @doc  Show a message on stderr indicating the command line options and
 %%       arguments that are supported by the program.
 -spec usage([option_spec()], string()) -> ok.
 usage(OptSpecList, ProgramName) ->
-    io:format("Usage: ~s~s~n~n~s~n",
-              [ProgramName, usage_cmd_line(OptSpecList), usage_options(OptSpecList)]).
+	usage(OptSpecList, ProgramName, standard_error).
 
 
-%% @doc  Show a message on stdout indicating the command line options and
+%% @doc  Show a message on stderr or stdout indicating the command line options and
+%%       arguments that are supported by the program.
+-spec usage([option_spec()], string(), output_stream()) -> ok.
+usage(OptSpecList, ProgramName, OutputStream) when is_atom(OutputStream) ->
+    io:format(OutputStream, "Usage: ~s~s~n~n~s~n",
+              [ProgramName, usage_cmd_line(OptSpecList), usage_options(OptSpecList)]);
+
+
+%% @doc  Show a message on stderr indicating the command line options and
 %%       arguments that are supported by the program. The CmdLineTail argument
 %%       is a string that is added to the end of the usage command line.
 -spec usage([option_spec()], string(), string()) -> ok.
 usage(OptSpecList, ProgramName, CmdLineTail) ->
-    io:format("Usage: ~s~s ~s~n~n~s~n",
-              [ProgramName, usage_cmd_line(OptSpecList), CmdLineTail, usage_options(OptSpecList)]).
+	usage(OptSpecList, ProgramName, CmdLineTail, standard_error).
 
 
-%% @doc  Show a message on stdout indicating the command line options and
+%% @doc  Show a message on stderr or stdout indicating the command line options and
+%%       arguments that are supported by the program. The CmdLineTail argument
+%%       is a string that is added to the end of the usage command line.
+-spec usage([option_spec()], string(), string(), output_stream()) -> ok.
+usage(OptSpecList, ProgramName, CmdLineTail) when is_atom(OutputStream) ->
+	io:format(OutputStream, "Usage: ~s~s ~s~n~n~s~n",
+              [ProgramName, usage_cmd_line(OptSpecList), CmdLineTail, usage_options(OptSpecList)]);
+
+
+%% @doc  Show a message on stderr indicating the command line options and
 %%       arguments that are supported by the program. The CmdLineTail and OptionsTail
 %%       arguments are a string that is added to the end of the usage command line
 %%       and a list of tuples that are added to the end of the options' help lines.
 -spec usage([option_spec()], string(), string(), [{string(), string()}]) -> ok.
 usage(OptSpecList, ProgramName, CmdLineTail, OptionsTail) ->
+	usage(OptSpecList, ProgramName, CmdLineTail, OptionsTail, standard_error).
+
+
+%% @doc  Show a message on stderr or stdout indicating the command line options and
+%%       arguments that are supported by the program. The CmdLineTail and OptionsTail
+%%       arguments are a string that is added to the end of the usage command line
+%%       and a list of tuples that are added to the end of the options' help lines.
+-spec usage([option_spec()], string(), string(), [{string(), string()}], output_stream()) -> ok.
+usage(OptSpecList, ProgramName, CmdLineTail, OptionsTail, OutputStream) ->
     UsageOptions = lists:foldl(
                      fun ({Prefix, Help}, Acc) ->
                              add_option_help(Prefix, Help, Acc)
                      end, usage_options_reverse(OptSpecList, []), OptionsTail),
-    io:format("Usage: ~s~s ~s~n~n~s~n",
+    io:format(OutputStream, "Usage: ~s~s ~s~n~n~s~n",
               [ProgramName, usage_cmd_line(OptSpecList), CmdLineTail,
                lists:flatten(lists:reverse(UsageOptions))]).
 
