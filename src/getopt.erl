@@ -336,7 +336,7 @@ add_implicit_integer_arg({Name, _Short, _Long, _ArgSpec, _Help}, OptAcc) ->
 
 %% @doc Add an option with an argument and convert it to the data type corresponding
 %%      to the argument specification.
--spec add_arg(option_spec(), string(), [option()]) -> [option()].
+-spec add_arg(option_spec(), arg_value(), [option()]) -> [option()].
 add_arg({Name, _Short, _Long, _ArgSpec, _Help}, Arg, OptAcc) ->
     [{Name, Arg} | lists:keydelete(Name, 1, OptAcc)].
 
