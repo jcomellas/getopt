@@ -289,7 +289,7 @@ add_option_no_arg({Name, _Short, _Long, ArgSpec, _Help} = OptSpec, OptAcc) ->
             %% the option had. This is needed to support options like "-vvv" to
             %% return something like {verbose, 3}.
             add_implicit_integer_arg(OptSpec, OptAcc);
-        true ->
+        _ ->
             throw({error, {missing_option_arg, Name}})
     end.
 
