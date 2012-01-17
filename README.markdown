@@ -69,7 +69,7 @@ e.g.
      {port, $p, "port", {integer, 5432}, "Database server port"}
 
 The second parameter receives the list of arguments as passed to the ``main/1``
-function in escripts or the unparsed command line as a string. 
+function in escripts or the unparsed command line as a string.
 
 If the function is successful parsing the command line arguments it will return
 a tuple containing the parsed options and the non-option arguments. The options
@@ -88,17 +88,17 @@ e.g. For a program named ``ex.escript`` with the following option specifications
          {port,    $p,        "port",    integer,               "Database server port"},
          {dbname,  undefined, "dbname",  {string, "users"},     "Database name"},
          {xml,     $x,        undefined, undefined,             "Output data in XML"},
-         {verbose, $v,        "verbose", boolean,               "List all the actions executed"},
+         {verbose, $v,        "verbose", integer,               "Verbosity level"},
          {file,    undefined, undefined, string,                "Output file"}
         ].
 
 And this command line:
 
-    Args = "-h myhost --port=1000 -x myfile.txt -v dummy1 dummy2"
+    Args = "-h myhost --port=1000 -x myfile.txt -vvv dummy1 dummy2"
 
 Which could also be passed in the format the ``main/1`` function receives the arguments in escripts:
 
-    Args = ["-h", "myhost", "--port=1000", "-x", "file.txt", "-v", "dummy1", "dummy2"].
+    Args = ["-h", "myhost", "--port=1000", "-x", "file.txt", "-vvv", "dummy1", "dummy2"].
 
 The call to ``getopt:parse/2``:
 
@@ -111,7 +111,7 @@ Will return:
           xml,
           {file,"file.txt"},
           {dbname,"users"},
-          {verbose,true}],
+          {verbose,3}],
          ["dummy1","dummy2"]}}
 
 
@@ -122,7 +122,7 @@ For example, given the above-mentioned option specifications, the call to
 
     getopt:usage(OptSpecList, "ex1").
 
-Will show (on *stdout*):
+Will show (on *stderr*):
 
     Usage: ex1 [-h <host>] [-p <port>] [--dbname <dbname>] [-x] [-v] <file>
 
@@ -130,22 +130,22 @@ Will show (on *stdout*):
       -p, --port                    Database server port
       --dbname                      Database name
       -x                            Output data in XML
-      -v                            List all the actions executed
+      -v                            Verbosity level
       <file>                        Output file
 
 This call to ``getopt:usage/3`` will add a string after the usage command line:
 
     getopt:usage(OptSpecList, "ex1", "[var=value ...] [command ...]").
 
-Will show (on *stdout*):
+Will show (on *stderr*):
 
     Usage: ex1 [-h <host>] [-p <port>] [--dbname <dbname>] [-x] [-v <verbose>] <file> [var=value ...] [command ...]
-    
+
       -h, --host            Database server host
       -p, --port            Database server port
       --dbname              Database name
       -x                    Output data in XML
-      -v, --verbose         List all the actions executed
+      -v, --verbose         Verbosity level
       <file>                Output file
 
 Whereas this call to ``getopt:usage/3`` will also add some lines to the options
@@ -158,12 +158,12 @@ help text:
 Will show (on *stdout*):
 
     Usage: ex1 [-h <host>] [-p <port>] [--dbname <dbname>] [-x] [-v <verbose>] <file> [var=value ...] [command ...]
-    
+
       -h, --host            Database server host
       -p, --port            Database server port
       --dbname              Database name
       -x                    Output data in XML
-      -v, --verbose         List all the actions executed
+      -v, --verbose         Verbosity level
       <file>                Output file
       var=value             Variables that will affect the execution (e.g. debug=1)
       command               Commands that will be executed (e.g. count)
@@ -184,6 +184,7 @@ A short option can have the following syntax:
     -afoo      Single option 'a', argument "foo"
     -abc       Multiple options: 'a'; 'b'; 'c'
     -bcafoo    Multiple options: 'b'; 'c'; 'a' with argument "foo"
+    -aaa       Multiple repetitions of option 'a' (when 'a' has integer arguments)
 
 A long option can have the following syntax:
 
@@ -225,25 +226,9 @@ character is considered as non-option argument too.
 Argument Types
 --------------
 
-The arguments allowed for options are: atom; binary; boolean; float; integer; string.
+The arguments allowed for options are: *atom*; *binary*; *boolean*; *float*; *integer*; *string*.
 The ``getopt`` module checks every argument to see if it can be converted to its
 correct type. In the case of boolean arguments, the following values (in lower or
-upper case) are considered ``true``:
+upper case) are considered ``true``: *true*; *t*; *yes*; *y*; *on*; *enabled*; *1*.
 
-- true
-- t
-- yes
-- y
-- on
-- enabled
-- 1
-
-And these ones are considered ``false``:
-    
-- false
-- f
-- no
-- n
-- off
-- disabled
-- 0
+And these ones are considered ``false``: *false*; *f*; *no*; *n*; *off*; *disabled*; *0*.

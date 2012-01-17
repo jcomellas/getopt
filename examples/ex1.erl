@@ -42,5 +42,6 @@ option_spec_list() ->
      {port,        $p,        "port",        {integer, 1000},       "Database server port"},
      {output_file, $o,        "output-file", string,                "File where the data will be saved to"},
      {xml,         $x,        "xml",         undefined,             "Output data as XML"},
+     {verbose,     $v,        "verbose",     integer,               "Verbosity level"},
      {dbname,      undefined, undefined,     string,                "Database name"}
     ].

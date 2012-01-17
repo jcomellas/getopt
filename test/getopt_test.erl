@@ -13,7 +13,7 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
--import(getopt, [parse/2, usage/2]).
+-import(getopt, [parse/2]).
 
 -define(NAME(Opt), element(1, Opt)).
 -define(SHORT(Opt), element(2, Opt)).
@@ -117,7 +117,7 @@ parse_1_test_() ->
          {?NAME(ShortLongDefArg), "default-short-long"}
         ],
     CombinedRest = ["dummy1", "dummy2"],
-         
+
     [
      {"No options and no arguments",
       ?_assertMatch({ok, {[], []}}, parse([], []))},
@@ -151,6 +151,7 @@ parse_1_test_() ->
      {?HELP(ShortBool),       ?_assertMatch({ok, {[{short_bool, false}], []}}, parse([ShortBool], [[$-, ?SHORT(ShortBool)], "false"]))},
      {?HELP(ShortInt),        ?_assertMatch({ok, {[{short_int, 100}], []}}, parse([ShortInt], [[$-, ?SHORT(ShortInt), $1, $0, $0]]))},
      {?HELP(ShortInt),        ?_assertMatch({ok, {[{short_int, 100}], []}}, parse([ShortInt], [[$-, ?SHORT(ShortInt)], "100"]))},
+     {?HELP(ShortInt),        ?_assertMatch({ok, {[{short_int, 3}], []}}, parse([ShortInt], [[$-, ?SHORT(ShortInt), ?SHORT(ShortInt), ?SHORT(ShortInt)]]))},
      {?HELP(ShortFloat),      ?_assertMatch({ok, {[{short_float, 1.0}], []}}, parse([ShortFloat], [[$-, ?SHORT(ShortFloat), $1, $., $0]]))},
      {?HELP(ShortFloat),      ?_assertMatch({ok, {[{short_float, 1.0}], []}}, parse([ShortFloat], [[$-, ?SHORT(ShortFloat)], "1.0"]))},
      {"Unsorted multiple short form options and arguments in a single string",
@@ -212,6 +213,6 @@ parse_1_test_() ->
      %% Combined
      {"Combined short, long and non-option arguments",
       ?_assertEqual({ok, {CombinedOpts, CombinedRest}}, parse(CombinedOptSpecs, CombinedArgs))},
-     {"Option with only short form and invalid integer argument",
-      ?_assertEqual({error, {invalid_option_arg, {?NAME(ShortInt), "value"}}}, parse([ShortInt], [[$-, ?SHORT(ShortInt)], "value"]))}
+     {"Option with only short form and non-integer argument",
+      ?_assertEqual({ok, {[{short_int, 1}], ["value"]}}, parse([ShortInt], [[$-, ?SHORT(ShortInt)], "value"]))}
     ].
