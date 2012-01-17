@@ -37,7 +37,7 @@ test:
 dialyzer:
 	@./rebar analyze
 
-shell: compile
+console: compile
 	$(ERL) -sname $(APPLICATION) $(EPATH)
 
 testshell: test
