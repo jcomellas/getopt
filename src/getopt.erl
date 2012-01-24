@@ -147,7 +147,7 @@ parse_option_assigned_arg(OptSpecList, OptAcc, ArgAcc, ArgPos, Args, OptStr, Lon
                 undefined ->
                     throw({error, {invalid_option_arg, OptStr}});
                 _ ->
-                    parse(OptSpecList, add_option_arg(OptSpec, Arg, OptAcc), ArgAcc, ArgPos, Args)
+                    parse(OptSpecList, add_option_assigned_arg(OptSpec, Arg, OptAcc), ArgAcc, ArgPos, Args)
             end;
         false ->
             throw({error, {invalid_option, OptStr}})
@@ -196,7 +196,8 @@ parse_option_short(OptSpecList, OptAcc, ArgAcc, ArgPos, Args, OptStr, [Short | A
                         true ->
                             parse(OptSpecList, add_option_arg(OptSpec, Arg, OptAcc), ArgAcc, ArgPos, Args);
                         _ ->
-                            %% There are 2 valid cases in which we may not receive the expected argument:
+                            %% There are 2 valid cases in which we may not receive an argument but we'll
+                            %% end up adding it anyway:
                             %% 1) When the expected argument is a boolean: in this case the presence
                             %%    of the option makes the argument true.
                             %% 2) When the expected argument is an integer: in this case the presence
@@ -218,26 +219,15 @@ parse_option_short(OptSpecList, OptAcc, ArgAcc, ArgPos, Args, _OptStr, []) ->
 %%      specification (for boolean and integer arguments), if possible.
 parse_option_next_arg(OptSpecList, OptAcc, ArgAcc, ArgPos, [Arg | Tail] = Args, {Name, _Short, _Long, ArgSpec, _Help} = OptSpec) ->
     ArgSpecType = arg_spec_type(ArgSpec),
-    case (ArgSpecType =:= boolean) andalso not is_boolean_arg(Arg) of
+    case is_implicit_arg(ArgSpec, Arg) of
         true ->
-            %% Special case for booleans: when the next string is not a boolean
-            %% argument we assume the value is 'true'.
-            parse(OptSpecList, add_arg(OptSpec, true, OptAcc), ArgAcc, ArgPos, Args);
+            parse(OptSpecList, add_option_no_arg(OptSpec, OptAcc), ArgAcc, ArgPos, Args);
         false ->
-            case (ArgSpecType =:= integer) andalso not is_integer_arg(Arg) of
-                true ->
-                    %% Special case for integer arguments: if the option had not been set
-                    %% before we set the value to 1; if not we increment the previous value
-                    %% the option had. This is needed to support options like "-vvv" to
-                    %% return something like {verbose, 3}.
-                    parse(OptSpecList, add_implicit_integer_arg(OptSpec, OptAcc), ArgAcc, ArgPos, Args);
-                false ->
-                    try
-                        parse(OptSpecList, add_arg(OptSpec, to_type(ArgSpecType, Arg), OptAcc), ArgAcc, ArgPos, Tail)
-                    catch
-                        error:_ ->
-                            throw({error, {invalid_option_arg, {Name, Arg}}})
-                    end
+            try
+                parse(OptSpecList, add_arg(OptSpec, to_type(ArgSpecType, Arg), OptAcc), ArgAcc, ArgPos, Tail)
+            catch
+                error:_ ->
+                    throw({error, {invalid_option_arg, {Name, Arg}}})
             end
     end;
 parse_option_next_arg(OptSpecList, OptAcc, ArgAcc, ArgPos, [] = Args, OptSpec) ->
@@ -277,18 +267,23 @@ append_default_options([], OptAcc) ->
 
 %% @doc Add an option with no argument.
 -spec add_option_no_arg(option_spec(), [option()]) -> [option()].
-add_option_no_arg({Name, _Short, _Long, ArgSpec, _Help} = OptSpec, OptAcc) ->
+add_option_no_arg({Name, _Short, _Long, ArgSpec, _Help}, OptAcc) ->
     case arg_spec_type(ArgSpec) of
         boolean ->
             %% Special case for boolean arguments: if there is no argument we
             %% set the value to 'true'.
-            add_arg(OptSpec, true, OptAcc);
+            [{Name, true} | OptAcc];
         integer ->
             %% Special case for integer arguments: if the option had not been set
             %% before we set the value to 1; if not we increment the previous value
             %% the option had. This is needed to support options like "-vvv" to
             %% return something like {verbose, 3}.
-            add_implicit_integer_arg(OptSpec, OptAcc);
+            case lists:keyfind(Name, 1, OptAcc) of
+                {Name, Count} ->
+                    lists:keyreplace(Name, 1, OptAcc, {Name, Count + 1});
+                false ->
+                    [{Name, 1} | OptAcc]
+            end;
         _ ->
             throw({error, {missing_option_arg, Name}})
     end.
@@ -298,39 +293,34 @@ add_option_no_arg({Name, _Short, _Long, ArgSpec, _Help} = OptSpec, OptAcc) ->
 %%      argument specification.
 -spec add_option_arg(option_spec(), string(), [option()]) -> [option()].
 add_option_arg({Name, _Short, _Long, ArgSpec, _Help} = OptSpec, Arg, OptAcc) ->
-    ArgSpecType = arg_spec_type(ArgSpec),
-    case (ArgSpecType =:= boolean) andalso not is_boolean_arg(Arg) of
+    case is_valid_arg(ArgSpec, Arg) of
         true ->
-            %% Special case for booleans: when the next string is not a boolean
-            %% argument we assume the value is 'true'.
-            add_arg(OptSpec, true, OptAcc);
+            try
+                add_arg(OptSpec, to_type(arg_spec_type(ArgSpec), Arg), OptAcc)
+            catch
+                error:_ ->
+                    throw({error, {invalid_option_arg, {Name, Arg}}})
+            end;
         false ->
-            case (ArgSpecType =:= integer) andalso not is_integer_arg(Arg) of
-                true ->
-                    %% Special case for integer arguments: if the option had not been set
-                    %% before we set the value to 1; if not we increment the previous value
-                    %% the option had. This is needed to support options like "-vvv" to
-                    %% return something like {verbose, 3}.
-                    add_implicit_integer_arg(OptSpec, OptAcc);
-                false ->
-                    try
-                       add_arg(OptSpec, to_type(ArgSpecType, Arg), OptAcc)
-                    catch
-                        error:_ ->
-                            throw({error, {invalid_option_arg, {Name, Arg}}})
-                    end
-            end
+            add_option_no_arg(OptSpec, OptAcc)
     end.
 
 
-%% Add an option with an integer argument.
--spec add_implicit_integer_arg(option_spec(), [option()]) -> [option()].
-add_implicit_integer_arg({Name, _Short, _Long, _ArgSpec, _Help}, OptAcc) ->
-    case lists:keyfind(Name, 1, OptAcc) of
-        {Name, Count} ->
-            lists:keyreplace(Name, 1, OptAcc, {Name, Count + 1});
+%% @doc Add an option with argument that was part of an assignment expression
+%%      (e.g. "--verbose=3") converting it to the data type indicated by the
+%%      argument specification.
+-spec add_option_assigned_arg(option_spec(), string(), [option()]) -> [option()].
+add_option_assigned_arg({Name, _Short, _Long, ArgSpec, _Help} = OptSpec, Arg, OptAcc) ->
+    case is_valid_assigned_arg(ArgSpec, Arg) of
+        true ->
+            try
+                add_arg(OptSpec, to_type(arg_spec_type(ArgSpec), Arg), OptAcc)
+            catch
+                error:_ ->
+                    throw({error, {invalid_option_arg, {Name, Arg}}})
+            end;
         false ->
-            [{Name, 1} | OptAcc]
+            add_option_no_arg(OptSpec, OptAcc)
     end.
 
 
@@ -338,7 +328,13 @@ add_implicit_integer_arg({Name, _Short, _Long, _ArgSpec, _Help}, OptAcc) ->
 %%      to the argument specification.
 -spec add_arg(option_spec(), arg_value(), [option()]) -> [option()].
 add_arg({Name, _Short, _Long, _ArgSpec, _Help}, Arg, OptAcc) ->
-    [{Name, Arg} | lists:keydelete(Name, 1, OptAcc)].
+%%    case arg_spec_type(ArgSpec) of
+%%         integer ->
+%%             [{Name, Arg} | lists:keydelete(Name, 1, OptAcc)];
+%%         _ ->
+%%             [{Name, Arg} | OptAcc]
+%%    end.
+    [{Name, Arg} | OptAcc].
 
 
 %% @doc Retrieve the data type form an argument specification.
@@ -398,11 +394,35 @@ is_valid_arg({Type, _DefaultArg}, Arg) ->
 is_valid_arg(boolean, Arg) ->
     is_boolean_arg(Arg);
 is_valid_arg(integer, Arg) ->
-    is_integer_arg(Arg);
+    is_non_neg_integer_arg(Arg);
 is_valid_arg(float, Arg) ->
-    is_float_arg(Arg);
+    is_non_neg_float_arg(Arg);
 is_valid_arg(_Type, _Arg) ->
     true.
+
+
+-spec is_valid_assigned_arg(arg_spec(), nonempty_string()) -> boolean().
+is_valid_assigned_arg({Type, _DefaultArg}, Arg) ->
+    is_valid_assigned_arg(Type, Arg);
+is_valid_assigned_arg(boolean, Arg) ->
+    is_boolean_arg(Arg);
+is_valid_assigned_arg(integer, Arg) ->
+    is_integer_arg(Arg);
+is_valid_assigned_arg(float, Arg) ->
+    is_float_arg(Arg);
+is_valid_assigned_arg(_Type, _Arg) ->
+    true.
+
+
+-spec is_implicit_arg(arg_spec(), nonempty_string()) -> boolean().
+is_implicit_arg({Type, _DefaultArg}, Arg) ->
+    is_implicit_arg(Type, Arg);
+is_implicit_arg(boolean, Arg) ->
+    not is_boolean_arg(Arg);
+is_implicit_arg(integer, Arg) ->
+    not is_integer_arg(Arg);
+is_implicit_arg(_Type, _Arg) ->
+    false.
 
 
 -spec is_boolean_arg(string()) -> boolean().
@@ -412,20 +432,34 @@ is_boolean_arg(Arg) ->
 
 
 -spec is_integer_arg(string()) -> boolean().
-is_integer_arg([Head | Tail]) when Head >= $0, Head =< $9 ->
-    is_integer_arg(Tail);
-is_integer_arg([_Head | _Tail]) ->
+is_integer_arg([$- | Tail]) ->
+    is_non_neg_integer_arg(Tail);
+is_integer_arg(Arg) ->
+    is_non_neg_integer_arg(Arg).
+
+
+-spec is_non_neg_integer_arg(string()) -> boolean().
+is_non_neg_integer_arg([Head | Tail]) when Head >= $0, Head =< $9 ->
+    is_non_neg_integer_arg(Tail);
+is_non_neg_integer_arg([_Head | _Tail]) ->
     false;
-is_integer_arg([]) ->
+is_non_neg_integer_arg([]) ->
     true.
 
 
 -spec is_float_arg(string()) -> boolean().
-is_float_arg([Head | Tail]) when (Head >= $0 andalso Head =< $9) orelse Head =:= $. ->
-    is_float_arg(Tail);
-is_float_arg([_Head | _Tail]) ->
+is_float_arg([$- | Tail]) ->
+    is_non_neg_float_arg(Tail);
+is_float_arg(Arg) ->
+    is_non_neg_float_arg(Arg).
+
+
+-spec is_non_neg_float_arg(string()) -> boolean().
+is_non_neg_float_arg([Head | Tail]) when (Head >= $0 andalso Head =< $9) orelse Head =:= $. ->
+    is_non_neg_float_arg(Tail);
+is_non_neg_float_arg([_Head | _Tail]) ->
     false;
-is_float_arg([]) ->
+is_non_neg_float_arg([]) ->
     true.
 
 

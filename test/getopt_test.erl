@@ -216,3 +216,17 @@ parse_1_test_() ->
      {"Option with only short form and non-integer argument",
       ?_assertEqual({ok, {[{short_int, 1}], ["value"]}}, parse([ShortInt], [[$-, ?SHORT(ShortInt)], "value"]))}
     ].
+
+
+%% Real world test for getopt/1
+parse_2_test_() ->
+    OptSpecList =
+        [
+         {define,      $D,        "define",      string,                "Define a variable"},
+         {verbose,     $v,        "verbose",     integer,               "Verbosity level"}
+        ],
+    [
+     {"Multiple repetitions of the same option",
+      ?_assertEqual({ok, {[{define, "FOO"}, {define, "VAR1=VAL1"}, {define, "BAR"}, {verbose, 3}], ["dummy1", "dummy2"]}},
+                    parse(OptSpecList, ["-DFOO", "-DVAR1=VAL1", "-DBAR", "-vv", "-v", "dummy1", "dummy2"]))}
+    ].
