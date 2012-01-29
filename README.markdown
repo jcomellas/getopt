@@ -7,8 +7,8 @@ Command-line parsing module that uses a syntax similar to that of GNU *getopt*.
 Requirements
 ------------
 
-You should only need a somewhat recent version of Erlang/OTP, though the module
-has only been tested with Erlang R13B.
+You should only need a somewhat recent version of Erlang/OTP. The module has
+been tested with Erlang R13B, R14B and R15B.
 
 
 Installation
@@ -212,7 +212,7 @@ Implicit Arguments
 ------------------
 
 The arguments for options with the *boolean* and *integer* data types can sometimes
-be omitted. In those cases a the value assigned to the option is *true* for *boolean*
+be omitted. In those cases the value assigned to the option is *true* for *boolean*
 arguments and *1* for integer arguments.
 
 
@@ -230,17 +230,17 @@ e.g. Given an option specification list with the following format:
     OptSpecList =
         [
          {define,      $D,        "define",      string,                "Define a variable"},
-         {debug,       $d,        "debug",       integer,               "Debug level"}
+         {verbose,     $v,        "verbose",     integer,               "Verbosity level"}
         ],
 
 The following invocation:
 
-    getopt:parse(OptSpecList, "-DFOO -DVAR1=VAL1 -DBAR --debug --debug=3 -d -dddd dummy").
+    getopt:parse(OptSpecList, "-DFOO -DVAR1=VAL1 -DBAR --verbose --verbose=3 -v -vvvv dummy").
 
 would return:
 
     {ok,{[{define,"FOO"}, {define,"VAR1=VAL1"}, {define,"BAR"},
-          {debug,1}, {debug,3}, {debug,1}, {debug,4}],
+          {verbose,1}, {verbose,3}, {verbose,1}, {verbose,4}],
          ["dummy"]}}
 
 
@@ -260,13 +260,9 @@ For example, with the following option specifications:
          {output_file, undefined, undefined,     string,                "File where the data will be saved to"}
         ].
 
-And these arguments:
+This call to ``getopt:parse/2``:
 
-    Args = "-x mydb file.out dummy1 dummy1".
-
-The call to ``getopt:parse/2``:
-
-    getopt:parse(OptSpecList, Args).
+    getopt:parse(OptSpecList, "-x mydb file.out dummy1 dummy1").
 
 Will return:
 
