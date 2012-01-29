@@ -223,10 +223,13 @@ parse_2_test_() ->
     OptSpecList =
         [
          {define,      $D,        "define",      string,                "Define a variable"},
-         {verbose,     $v,        "verbose",     integer,               "Verbosity level"}
+         {debug,       $d,        "debug",       integer,               "Debug level"},
+         {offset,      $o,        "offset",      float,                 "Offset"},
+         {verbose,     $v,        "verbose",     boolean,               "Enable verbose output"}
         ],
     [
      {"Multiple repetitions of the same option",
-      ?_assertEqual({ok, {[{define, "FOO"}, {define, "VAR1=VAL1"}, {define, "BAR"}, {verbose, 3}], ["dummy1", "dummy2"]}},
-                    parse(OptSpecList, ["-DFOO", "-DVAR1=VAL1", "-DBAR", "-vv", "-v", "dummy1", "dummy2"]))}
+      ?_assertEqual({ok, {[{define, "FOO"}, {define, "VAR1=VAL1"}, {define, "BAR"},
+                           {verbose, true}, {verbose, true}, {debug, 2}, {offset, -61.0}, {debug, 1}, {debug, 4}], ["dummy1", "dummy2"]}},
+                    parse(OptSpecList, "-DFOO -DVAR1=VAL1 -DBAR -vv -dd --offset=-61.0 --debug -dddd  dummy1 dummy2"))}
     ].

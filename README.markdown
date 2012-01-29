@@ -80,7 +80,7 @@ added to the list of options. For the example given above we could get something
 like ``{port, 5432}``. The non-option arguments are just a list of strings with
 all the arguments that did not have corresponding options.
 
-e.g. For a program named ``ex.escript`` with the following option specifications:
+e.g. Given the following option specifications:
 
     OptSpecList =
         [
@@ -113,7 +113,6 @@ Will return:
           {dbname,"users"},
           {verbose,3}],
          ["dummy1","dummy2"]}}
-
 
 The other functions exported by the ``getopt`` module (``usage/2``, ``usage/3``
 and ``usage/4``) are used to show the command line syntax for the program.
@@ -184,13 +183,69 @@ A short option can have the following syntax:
     -afoo      Single option 'a', argument "foo"
     -abc       Multiple options: 'a'; 'b'; 'c'
     -bcafoo    Multiple options: 'b'; 'c'; 'a' with argument "foo"
-    -aaa       Multiple repetitions of option 'a' (when 'a' has integer arguments)
+    -aaa       Multiple repetitions of option 'a'
 
 A long option can have the following syntax:
 
     --foo      Single option 'foo', no argument
     --foo=bar  Single option 'foo', argument "bar"
     --foo bar  Single option 'foo', argument "bar"
+
+
+Argument Types
+--------------
+
+The arguments allowed for options are: *atom*; *binary*; *boolean*; *float*; *integer*; *string*.
+The ``getopt`` module checks every argument to see if it can be converted to its
+correct type.
+
+In the case of boolean arguments, the following values (in lower or
+upper case) are considered ``true``: *true*; *t*; *yes*; *y*; *on*; *enabled*; *1*.
+These ones are considered ``false``: *false*; *f*; *no*; *n*; *off*; *disabled*; *0*.
+
+Numeric arguments can only be negative when passed as part of an assignment expression.
+
+e.g. ``--increment=-100`` is a valid expression; whereas ``--increment -100`` is invalid
+
+
+Implicit Arguments
+------------------
+
+The arguments for options with the *boolean* and *integer* data types can sometimes
+be omitted. In those cases a the value assigned to the option is *true* for *boolean*
+arguments and *1* for integer arguments.
+
+
+Multiple Repetitions
+--------------------
+
+An option can be repeated several times, in which case there will be multiple
+appearances of the option in the resulting list. The only exceptions are short
+options with integer arguments. In that particular case, each appearance of
+the short option within a single command line argument will increment the
+number that will be returned for that specific option.
+
+e.g. Given an option specification list with the following format:
+
+    OptSpecList =
+        [
+         {define,      $D,        "define",      string,                "Define a variable"},
+         {debug,       $d,        "debug",       integer,               "Debug level"}
+        ],
+
+The following invocation:
+
+    getopt:parse(OptSpecList, "-DFOO -DVAR1=VAL1 -DBAR --debug --debug=3 -d -dddd dummy").
+
+would return:
+
+    {ok,{[{define,"FOO"}, {define,"VAR1=VAL1"}, {define,"BAR"},
+          {debug,1}, {debug,3}, {debug,1}, {debug,4}],
+         ["dummy"]}}
+
+
+Positional Options
+------------------
 
 We can also have options with neither short nor long option name. In this case,
 the options will be taken according to their position in the option specification
@@ -221,14 +276,3 @@ Will return:
 Finally, the string ``--`` is considered an option terminator (i.e. all
 arguments after it are considered non-option arguments) and the single ``-``
 character is considered as non-option argument too.
-
-
-Argument Types
---------------
-
-The arguments allowed for options are: *atom*; *binary*; *boolean*; *float*; *integer*; *string*.
-The ``getopt`` module checks every argument to see if it can be converted to its
-correct type. In the case of boolean arguments, the following values (in lower or
-upper case) are considered ``true``: *true*; *t*; *yes*; *y*; *on*; *enabled*; *1*.
-
-And these ones are considered ``false``: *false*; *f*; *no*; *n*; *off*; *disabled*; *0*.
