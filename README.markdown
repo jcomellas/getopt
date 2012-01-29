@@ -231,7 +231,7 @@ e.g. Given an option specification list with the following format:
         [
          {define,      $D,        "define",      string,                "Define a variable"},
          {verbose,     $v,        "verbose",     integer,               "Verbosity level"}
-        ],
+        ].
 
 The following invocation:
 
@@ -262,13 +262,45 @@ For example, with the following option specifications:
 
 This call to ``getopt:parse/2``:
 
-    getopt:parse(OptSpecList, "-x mydb file.out dummy1 dummy1").
+    getopt:parse(OptSpecList, "-x mydb file.out dummy dummy").
 
 Will return:
 
     {ok,{[xml,{dbname,"mydb"},{output_file,"file.out"}],
-         ["dummy1","dummy1"]}}
+         ["dummy","dummy"]}}
 
-Finally, the string ``--`` is considered an option terminator (i.e. all
-arguments after it are considered non-option arguments) and the single ``-``
-character is considered as non-option argument too.
+
+Option Terminators
+------------------
+
+The string ``--`` is considered an option terminator. This means that all the
+command-line arguments after it are considered non-option arguments and will be
+returned without being evaluated even if they follow the *getopt* syntax.
+
+e.g. This invocation using the first option specification list in the document:
+
+    getopt:parse(OptSpecList, "-h myhost -p 1000 -- --dbname mydb dummy").
+
+will return:
+
+    {ok,{[{host,"myhost"}, {port,1000},{dbname,"users"}],
+         ["--dbname","mydb","dummy"]}}
+
+Notice that the *dbname* option was assigned the value ``users`` instead of ``mydb``.
+This happens because the option terminator prevented ``getopt`` from evaluating it
+and the default value was assigned to it.
+
+
+Non-option Arguments
+--------------------
+
+The single ``-`` character is always considered as a non-option argument.
+
+e.g. This invocation using the specification list from the previous example:
+
+    getopt:parse(OptSpecList, "-h myhost -p 1000 - --dbname mydb dummy").
+
+will return:
+
+    {ok,{[{host,"myhost"}, {port,1000}, {dbname,"mydb"}],
+         ["-","dummy"]}}
