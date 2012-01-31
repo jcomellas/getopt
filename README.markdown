@@ -121,7 +121,7 @@ For example, given the above-mentioned option specifications, the call to
 
     getopt:usage(OptSpecList, "ex1").
 
-Will show (on *stderr*):
+Will show (on *standard_error*):
 
     Usage: ex1 [-h <host>] [-p <port>] [--dbname <dbname>] [-x] [-v] <file>
 
@@ -136,7 +136,7 @@ This call to ``getopt:usage/3`` will add a string after the usage command line:
 
     getopt:usage(OptSpecList, "ex1", "[var=value ...] [command ...]").
 
-Will show (on *stderr*):
+Will show (on *standard_error*):
 
     Usage: ex1 [-h <host>] [-p <port>] [--dbname <dbname>] [-x] [-v <verbose>] <file> [var=value ...] [command ...]
 
@@ -154,7 +154,7 @@ help text:
                  [{"var=value", "Variables that will affect the execution (e.g. debug=1)"},
                   {"command",   "Commands that will be executed (e.g. count)"}]).
 
-Will show (on *stdout*):
+Will show (on *standard_error*):
 
     Usage: ex1 [-h <host>] [-p <port>] [--dbname <dbname>] [-x] [-v <verbose>] <file> [var=value ...] [command ...]
 
