@@ -250,8 +250,8 @@ e.g. Given an option specification list with the following format:
 ``` erlang
     OptSpecList =
         [
-         {define,      $D,        "define",      string,                "Define a variable"},
-         {verbose,     $v,        "verbose",     integer,               "Verbosity level"}
+         {define,  $D, "define",  string,  "Define a variable"},
+         {verbose, $v, "verbose", integer, "Verbosity level"}
         ].
 ```
 
@@ -282,9 +282,9 @@ For example, with the following option specifications:
 ``` erlang
     OptSpecList =
         [
-         {xml,         $x,        "xml",         undefined,             "Output data as XML"},
-         {dbname,      undefined, undefined,     string,                "Database name"},
-         {output_file, undefined, undefined,     string,                "File where the data will be saved to"}
+         {xml,         $x,        "xml",     undefined, "Output data as XML"},
+         {dbname,      undefined, undefined, string,    "Database name"},
+         {output_file, undefined, undefined, string,    "File where the data will be saved to"}
         ].
 ```
 
