@@ -28,6 +28,7 @@ Usage
 
 The *getopt* module provides four functions:
 
+``` erlang
     parse([{Name, Short, Long, ArgSpec, Help}], Args :: string() | [string()]) ->
         {ok, {Options, NonOptionArgs}} | {error, {Reason, Data}}
 
@@ -38,10 +39,12 @@ The *getopt* module provides four functions:
 
     usage([{Name, Short, Long, ArgSpec, Help}], ProgramName :: string(),
           CmdLineTail :: string(), OptionsTail :: [{string(), string}]) -> ok
+```
 
 The ``parse/2`` function receives a list of tuples with the command line option
 specifications. The type specification for the tuple is:
 
+``` erlang
     -type arg_type() :: 'atom' | 'binary' | 'boolean' | 'float' | 'integer' | 'string'.
 
     -type arg_value() :: atom() | binary() | boolean() | float() | integer() | string().
@@ -55,6 +58,7 @@ specifications. The type specification for the tuple is:
                        ArgSpec :: arg_spec(),
                        Help    :: string() | undefined
                       }.
+```
 
 The elements of the tuple are:
 
@@ -66,7 +70,9 @@ The elements of the tuple are:
 
 e.g.
 
+``` erlang
      {port, $p, "port", {integer, 5432}, "Database server port"}
+```
 
 The second parameter receives the list of arguments as passed to the ``main/1``
 function in escripts or the unparsed command line as a string.
@@ -82,6 +88,7 @@ all the arguments that did not have corresponding options.
 
 e.g. Given the following option specifications:
 
+``` erlang
     OptSpecList =
         [
          {host,    $h,        "host",    {string, "localhost"}, "Database server host"},
@@ -91,21 +98,29 @@ e.g. Given the following option specifications:
          {verbose, $v,        "verbose", integer,               "Verbosity level"},
          {file,    undefined, undefined, string,                "Output file"}
         ].
+```
 
 And this command line:
 
+``` erlang
     Args = "-h myhost --port=1000 -x myfile.txt -vvv dummy1 dummy2"
+```
 
 Which could also be passed in the format the ``main/1`` function receives the arguments in escripts:
 
+``` erlang
     Args = ["-h", "myhost", "--port=1000", "-x", "file.txt", "-vvv", "dummy1", "dummy2"].
+```
 
 The call to ``getopt:parse/2``:
 
+``` erlang
     getopt:parse(OptSpecList, Args).
+```
 
 Will return:
 
+``` erlang
     {ok,{[{host,"myhost"},
           {port,1000},
           xml,
@@ -113,13 +128,16 @@ Will return:
           {dbname,"users"},
           {verbose,3}],
          ["dummy1","dummy2"]}}
+```
 
 The other functions exported by the ``getopt`` module (``usage/2``, ``usage/3``
 and ``usage/4``) are used to show the command line syntax for the program.
 For example, given the above-mentioned option specifications, the call to
 ``getopt:usage/2``:
 
+``` erlang
     getopt:usage(OptSpecList, "ex1").
+```
 
 Will show (on *standard_error*):
 
@@ -150,9 +168,11 @@ Will show (on *standard_error*):
 Whereas this call to ``getopt:usage/3`` will also add some lines to the options
 help text:
 
+``` erlang
     getopt:usage(OptSpecList, "ex1", "[var=value ...] [command ...]",
                  [{"var=value", "Variables that will affect the execution (e.g. debug=1)"},
                   {"command",   "Commands that will be executed (e.g. count)"}]).
+```
 
 Will show (on *standard_error*):
 
@@ -227,21 +247,27 @@ number that will be returned for that specific option.
 
 e.g. Given an option specification list with the following format:
 
+``` erlang
     OptSpecList =
         [
          {define,      $D,        "define",      string,                "Define a variable"},
          {verbose,     $v,        "verbose",     integer,               "Verbosity level"}
         ].
+```
 
 The following invocation:
 
+``` erlang
     getopt:parse(OptSpecList, "-DFOO -DVAR1=VAL1 -DBAR --verbose --verbose=3 -v -vvvv dummy").
+```
 
 would return:
 
+``` erlang
     {ok,{[{define,"FOO"}, {define,"VAR1=VAL1"}, {define,"BAR"},
           {verbose,1}, {verbose,3}, {verbose,1}, {verbose,4}],
          ["dummy"]}}
+```
 
 
 Positional Options
@@ -253,21 +279,27 @@ list passed to ``getopt:/parse2``.
 
 For example, with the following option specifications:
 
+``` erlang
     OptSpecList =
         [
          {xml,         $x,        "xml",         undefined,             "Output data as XML"},
          {dbname,      undefined, undefined,     string,                "Database name"},
          {output_file, undefined, undefined,     string,                "File where the data will be saved to"}
         ].
+```
 
 This call to ``getopt:parse/2``:
 
+``` erlang
     getopt:parse(OptSpecList, "-x mydb file.out dummy dummy").
+```
 
 Will return:
 
+``` erlang
     {ok,{[xml,{dbname,"mydb"},{output_file,"file.out"}],
          ["dummy","dummy"]}}
+```
 
 
 Option Terminators
@@ -279,12 +311,16 @@ returned without being evaluated even if they follow the *getopt* syntax.
 
 e.g. This invocation using the first option specification list in the document:
 
+``` erlang
     getopt:parse(OptSpecList, "-h myhost -p 1000 -- --dbname mydb dummy").
+```
 
 will return:
 
+``` erlang
     {ok,{[{host,"myhost"}, {port,1000},{dbname,"users"}],
          ["--dbname","mydb","dummy"]}}
+```
 
 Notice that the *dbname* option was assigned the value ``users`` instead of ``mydb``.
 This happens because the option terminator prevented ``getopt`` from evaluating it
@@ -298,9 +334,13 @@ The single ``-`` character is always considered as a non-option argument.
 
 e.g. This invocation using the specification list from the previous example:
 
+``` erlang
     getopt:parse(OptSpecList, "-h myhost -p 1000 - --dbname mydb dummy").
+```
 
 will return:
 
+``` erlang
     {ok,{[{host,"myhost"}, {port,1000}, {dbname,"mydb"}],
          ["-","dummy"]}}
+```
