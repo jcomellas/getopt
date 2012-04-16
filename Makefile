@@ -14,10 +14,10 @@ APPS=kernel stdlib
 all: compile
 
 compile:
-	@./rebar compile
+	@rebar compile
 
 doc:
-	@./rebar doc
+	@rebar doc
 
 plt: compile
 	@$(DIALYZER) --build_plt --output_plt $(PLT_FILE) --apps $(APPS) ebin
@@ -29,13 +29,13 @@ analyze: compile
 	@$(DIALYZER) --plt $(PLT_FILE) $(DIALYZER_OPTS) -r ebin
 
 clean:
-	@./rebar clean
+	@rebar clean
 
 test:
-	@./rebar eunit
+	@rebar eunit
 
 dialyzer:
-	@./rebar analyze
+	@rebar analyze
 
 console: compile
 	$(ERL) -sname $(APPLICATION) $(EPATH)

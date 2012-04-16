@@ -10,6 +10,13 @@ Requirements
 You should only need a somewhat recent version of Erlang/OTP. The module has
 been tested with Erlang R13B, R14B and R15B.
 
+You also need a recent version of [rebar](http://github.com/basho/rebar) in
+the system path. If you're going to run the unit tests you need the latest
+version of rebar to make sure that the latest version of *getopt* is being
+used. rebar already includes a compiled copy of the ``getopt`` module in its
+own binary file and will give precedence to its own modules over the ones in
+the project.
+
 
 Installation
 ------------
@@ -323,7 +330,7 @@ will return:
 ```
 
 Notice that the *dbname* option was assigned the value ``users`` instead of ``mydb``.
-This happens because the option terminator prevented ``getopt`` from evaluating it
+This happens because the option terminator prevented *getopt* from evaluating it
 and the default value was assigned to it.
 
 
