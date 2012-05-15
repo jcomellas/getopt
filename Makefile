@@ -1,5 +1,6 @@
 APPLICATION := getopt
 
+REBAR=$(shell which rebar || echo ./rebar)
 ERL := erl
 EPATH := -pa ebin
 TEST_EPATH := -pa .eunit
@@ -14,10 +15,10 @@ APPS=kernel stdlib
 all: compile
 
 compile:
-	@rebar compile
+	@$(REBAR) compile
 
 doc:
-	@rebar doc
+	@$(REBAR) doc
 
 plt: compile
 	@$(DIALYZER) --build_plt --output_plt $(PLT_FILE) --apps $(APPS) ebin
@@ -29,13 +30,13 @@ analyze: compile
 	@$(DIALYZER) --plt $(PLT_FILE) $(DIALYZER_OPTS) -r ebin
 
 clean:
-	@rebar clean
+	@$(REBAR) clean
 
 test:
-	@rebar eunit
+	@$(REBAR) eunit
 
 dialyzer:
-	@rebar analyze
+	@$(REBAR) analyze
 
 console: compile
 	$(ERL) -sname $(APPLICATION) $(EPATH)
