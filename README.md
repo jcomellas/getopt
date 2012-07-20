@@ -36,35 +36,35 @@ Usage
 The *getopt* module provides four functions:
 
 ``` erlang
-    parse([{Name, Short, Long, ArgSpec, Help}], Args :: string() | [string()]) ->
-        {ok, {Options, NonOptionArgs}} | {error, {Reason, Data}}
+parse([{Name, Short, Long, ArgSpec, Help}], Args :: string() | [string()]) ->
+    {ok, {Options, NonOptionArgs}} | {error, {Reason, Data}}
 
-    usage([{Name, Short, Long, ArgSpec, Help}], ProgramName :: string()) -> ok
+usage([{Name, Short, Long, ArgSpec, Help}], ProgramName :: string()) -> ok
 
-    usage([{Name, Short, Long, ArgSpec, Help}], ProgramName :: string(),
-          CmdLineTail :: string()) -> ok
+usage([{Name, Short, Long, ArgSpec, Help}], ProgramName :: string(),
+      CmdLineTail :: string()) -> ok
 
-    usage([{Name, Short, Long, ArgSpec, Help}], ProgramName :: string(),
-          CmdLineTail :: string(), OptionsTail :: [{string(), string}]) -> ok
+usage([{Name, Short, Long, ArgSpec, Help}], ProgramName :: string(),
+      CmdLineTail :: string(), OptionsTail :: [{string(), string}]) -> ok
 ```
 
 The ``parse/2`` function receives a list of tuples with the command line option
 specifications. The type specification for the tuple is:
 
 ``` erlang
-    -type arg_type() :: 'atom' | 'binary' | 'boolean' | 'float' | 'integer' | 'string'.
+-type arg_type() :: 'atom' | 'binary' | 'boolean' | 'float' | 'integer' | 'string'.
 
-    -type arg_value() :: atom() | binary() | boolean() | float() | integer() | string().
+-type arg_value() :: atom() | binary() | boolean() | float() | integer() | string().
 
-    -type arg_spec() :: arg_type() | {arg_type(), arg_value()} | undefined.
+-type arg_spec() :: arg_type() | {arg_type(), arg_value()} | undefined.
 
-    -type option_spec() :: {
-                       Name    :: atom(),
-                       Short   :: char() | undefined,
-                       Long    :: string() | undefined,
-                       ArgSpec :: arg_spec(),
-                       Help    :: string() | undefined
-                      }.
+-type option_spec() :: {
+                   Name    :: atom(),
+                   Short   :: char() | undefined,
+                   Long    :: string() | undefined,
+                   ArgSpec :: arg_spec(),
+                   Help    :: string() | undefined
+                  }.
 ```
 
 The elements of the tuple are:
@@ -78,7 +78,7 @@ The elements of the tuple are:
 e.g.
 
 ``` erlang
-     {port, $p, "port", {integer, 5432}, "Database server port"}
+{port, $p, "port", {integer, 5432}, "Database server port"}
 ```
 
 The second parameter receives the list of arguments as passed to the ``main/1``
@@ -96,45 +96,45 @@ all the arguments that did not have corresponding options.
 e.g. Given the following option specifications:
 
 ``` erlang
-    OptSpecList =
-        [
-         {host,    $h,        "host",    {string, "localhost"}, "Database server host"},
-         {port,    $p,        "port",    integer,               "Database server port"},
-         {dbname,  undefined, "dbname",  {string, "users"},     "Database name"},
-         {xml,     $x,        undefined, undefined,             "Output data in XML"},
-         {verbose, $v,        "verbose", integer,               "Verbosity level"},
-         {file,    undefined, undefined, string,                "Output file"}
-        ].
+OptSpecList =
+    [
+     {host,    $h,        "host",    {string, "localhost"}, "Database server host"},
+     {port,    $p,        "port",    integer,               "Database server port"},
+     {dbname,  undefined, "dbname",  {string, "users"},     "Database name"},
+     {xml,     $x,        undefined, undefined,             "Output data in XML"},
+     {verbose, $v,        "verbose", integer,               "Verbosity level"},
+     {file,    undefined, undefined, string,                "Output file"}
+    ].
 ```
 
 And this command line:
 
 ``` erlang
-    Args = "-h myhost --port=1000 -x myfile.txt -vvv dummy1 dummy2"
+Args = "-h myhost --port=1000 -x myfile.txt -vvv dummy1 dummy2"
 ```
 
 Which could also be passed in the format the ``main/1`` function receives the arguments in escripts:
 
 ``` erlang
-    Args = ["-h", "myhost", "--port=1000", "-x", "file.txt", "-vvv", "dummy1", "dummy2"].
+Args = ["-h", "myhost", "--port=1000", "-x", "file.txt", "-vvv", "dummy1", "dummy2"].
 ```
 
 The call to ``getopt:parse/2``:
 
 ``` erlang
-    getopt:parse(OptSpecList, Args).
+getopt:parse(OptSpecList, Args).
 ```
 
 Will return:
 
 ``` erlang
-    {ok,{[{host,"myhost"},
-          {port,1000},
-          xml,
-          {file,"file.txt"},
-          {dbname,"users"},
-          {verbose,3}],
-         ["dummy1","dummy2"]}}
+{ok,{[{host,"myhost"},
+      {port,1000},
+      xml,
+      {file,"file.txt"},
+      {dbname,"users"},
+      {verbose,3}],
+     ["dummy1","dummy2"]}}
 ```
 
 The other functions exported by the ``getopt`` module (``usage/2``, ``usage/3``
@@ -143,7 +143,7 @@ For example, given the above-mentioned option specifications, the call to
 ``getopt:usage/2``:
 
 ``` erlang
-    getopt:usage(OptSpecList, "ex1").
+getopt:usage(OptSpecList, "ex1").
 ```
 
 Will show (on *standard_error*):
@@ -159,7 +159,9 @@ Will show (on *standard_error*):
 
 This call to ``getopt:usage/3`` will add a string after the usage command line:
 
+``` erlang
     getopt:usage(OptSpecList, "ex1", "[var=value ...] [command ...]").
+```
 
 Will show (on *standard_error*):
 
@@ -176,9 +178,9 @@ Whereas this call to ``getopt:usage/3`` will also add some lines to the options
 help text:
 
 ``` erlang
-    getopt:usage(OptSpecList, "ex1", "[var=value ...] [command ...]",
-                 [{"var=value", "Variables that will affect the execution (e.g. debug=1)"},
-                  {"command",   "Commands that will be executed (e.g. count)"}]).
+getopt:usage(OptSpecList, "ex1", "[var=value ...] [command ...]",
+             [{"var=value", "Variables that will affect the execution (e.g. debug=1)"},
+              {"command",   "Commands that will be executed (e.g. count)"}]).
 ```
 
 Will show (on *standard_error*):
@@ -255,25 +257,25 @@ number that will be returned for that specific option.
 e.g. Given an option specification list with the following format:
 
 ``` erlang
-    OptSpecList =
-        [
-         {define,  $D, "define",  string,  "Define a variable"},
-         {verbose, $v, "verbose", integer, "Verbosity level"}
-        ].
+OptSpecList =
+    [
+     {define,  $D, "define",  string,  "Define a variable"},
+     {verbose, $v, "verbose", integer, "Verbosity level"}
+    ].
 ```
 
 The following invocation:
 
 ``` erlang
-    getopt:parse(OptSpecList, "-DFOO -DVAR1=VAL1 -DBAR --verbose --verbose=3 -v -vvvv dummy").
+getopt:parse(OptSpecList, "-DFOO -DVAR1=VAL1 -DBAR --verbose --verbose=3 -v -vvvv dummy").
 ```
 
 would return:
 
 ``` erlang
-    {ok,{[{define,"FOO"}, {define,"VAR1=VAL1"}, {define,"BAR"},
-          {verbose,1}, {verbose,3}, {verbose,1}, {verbose,4}],
-         ["dummy"]}}
+{ok,{[{define,"FOO"}, {define,"VAR1=VAL1"}, {define,"BAR"},
+      {verbose,1}, {verbose,3}, {verbose,1}, {verbose,4}],
+     ["dummy"]}}
 ```
 
 
@@ -287,25 +289,25 @@ list passed to ``getopt:/parse2``.
 For example, with the following option specifications:
 
 ``` erlang
-    OptSpecList =
-        [
-         {xml,         $x,        "xml",     undefined, "Output data as XML"},
-         {dbname,      undefined, undefined, string,    "Database name"},
-         {output_file, undefined, undefined, string,    "File where the data will be saved to"}
-        ].
+OptSpecList =
+    [
+     {xml,         $x,        "xml",     undefined, "Output data as XML"},
+     {dbname,      undefined, undefined, string,    "Database name"},
+     {output_file, undefined, undefined, string,    "File where the data will be saved to"}
+    ].
 ```
 
 This call to ``getopt:parse/2``:
 
 ``` erlang
-    getopt:parse(OptSpecList, "-x mydb file.out dummy dummy").
+getopt:parse(OptSpecList, "-x mydb file.out dummy dummy").
 ```
 
 Will return:
 
 ``` erlang
-    {ok,{[xml,{dbname,"mydb"},{output_file,"file.out"}],
-         ["dummy","dummy"]}}
+{ok,{[xml,{dbname,"mydb"},{output_file,"file.out"}],
+     ["dummy","dummy"]}}
 ```
 
 
@@ -319,14 +321,14 @@ returned without being evaluated even if they follow the *getopt* syntax.
 e.g. This invocation using the first option specification list in the document:
 
 ``` erlang
-    getopt:parse(OptSpecList, "-h myhost -p 1000 -- --dbname mydb dummy").
+getopt:parse(OptSpecList, "-h myhost -p 1000 -- --dbname mydb dummy").
 ```
 
 will return:
 
 ``` erlang
-    {ok,{[{host,"myhost"}, {port,1000},{dbname,"users"}],
-         ["--dbname","mydb","dummy"]}}
+{ok,{[{host,"myhost"}, {port,1000},{dbname,"users"}],
+     ["--dbname","mydb","dummy"]}}
 ```
 
 Notice that the *dbname* option was assigned the value ``users`` instead of ``mydb``.
@@ -342,14 +344,14 @@ The single ``-`` character is always considered as a non-option argument.
 e.g. This invocation using the specification list from the previous example:
 
 ``` erlang
-    getopt:parse(OptSpecList, "-h myhost -p 1000 - --dbname mydb dummy").
+getopt:parse(OptSpecList, "-h myhost -p 1000 - --dbname mydb dummy").
 ```
 
 will return:
 
 ``` erlang
-    {ok,{[{host,"myhost"}, {port,1000}, {dbname,"mydb"}],
-         ["-","dummy"]}}
+{ok,{[{host,"myhost"}, {port,1000}, {dbname,"mydb"}],
+     ["-","dummy"]}}
 ```
 
 
@@ -364,27 +366,27 @@ argument.
 e.g. Given an option specification list with the following format:
 
 ``` erlang
-    OptSpecList =
-        [
-         {define,  $D, "define",  string,  "Define a variable"},
-         {user,    $u, "user",    string,  "User name"}
-        ].
+OptSpecList =
+    [
+     {define,  $D, "define",  string,  "Define a variable"},
+     {user,    $u, "user",    string,  "User name"}
+    ].
 ```
 
 The following invocation:
 
 ``` erlang
-    getopt:parse(OptSpecList,
-                 "-D'FOO=VAR 123' --define \"VAR WITH SPACES\" -u\"my user name\"").
+getopt:parse(OptSpecList,
+             "-D'FOO=VAR 123' --define \"VAR WITH SPACES\" -u\"my user name\"").
 ```
 
 would return:
 
 ``` erlang
-    {ok,{[{define,"FOO=VAR 123"},
-          {define,"VAR WITH SPACES"},
-          {user,"my user name"}],
-         []}}
+{ok,{[{define,"FOO=VAR 123"},
+      {define,"VAR WITH SPACES"},
+      {user,"my user name"}],
+     []}}
 ```
 
 When parsing a command line with unclosed quotes the last argument
@@ -394,14 +396,14 @@ was entered.
 e.g. The following invocation:
 
 ``` erlang
-    getopt:parse(OptSpecList, "--user ' my user ' \"argument with unclosed quotes").
+getopt:parse(OptSpecList, "--user ' my user ' \"argument with unclosed quotes").
 ```
 
 would return:
 
 ``` erlang
-    {ok,{[{user," my user "}],
-         ["argument with unclosed quotes"]}}
+{ok,{[{user," my user "}],
+     ["argument with unclosed quotes"]}}
 ```
 
 
@@ -412,9 +414,9 @@ Environment variable expansion
 line that is passed as a single string. The formats that are supported
 for environment variable expansion are:
 
-    - $VAR (simple Unix/bash format)
-    - ${VAR} (full Unix/bash format)
-    - %VAR% (Windows format)
+  - $VAR (simple Unix/bash format)
+  - ${VAR} (full Unix/bash format)
+  - %VAR% (Windows format)
 
 If a variable is not present in the environment it will not be
 expanded. Variables can be expanded within double-quoted and free
@@ -424,23 +426,23 @@ single-quoted arguments.
 e.g. Given the following option specification list:
 
 ``` erlang
-    OptSpecList =
-        [
-         {path,    $p, "path",    string,  "File path"}
-        ].
+OptSpecList =
+    [
+     {path,    $p, "path",    string,  "File path"}
+    ].
 ```
 
 The following invocation:
 
 ``` erlang
-    getopt:parse(OptSpecList, "--path ${PATH} $NONEXISTENT_DUMMY_VAR").
+getopt:parse(OptSpecList, "--path ${PATH} $NONEXISTENT_DUMMY_VAR").
 ```
 
 would return (depending on the value of your PATH variable) something like:
 
 ``` erlang
-    {ok,{[{path, "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"}],
-         ["$NONEXISTENT_DUMMY_VAR"]}}
+{ok,{[{path, "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"}],
+     ["$NONEXISTENT_DUMMY_VAR"]}}
 ```
 
 Currently, *getopt* does not perform wildcard expansion of file paths.
