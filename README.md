@@ -280,7 +280,7 @@ would return:
 Positional Options
 ------------------
 
-We can also have options with neither short nor long option name. In this case,
+We can also have options with neither short nor long option names. In this case,
 the options will be taken according to their position in the option specification
 list passed to ``getopt:/parse2``.
 
@@ -351,3 +351,96 @@ will return:
     {ok,{[{host,"myhost"}, {port,1000}, {dbname,"mydb"}],
          ["-","dummy"]}}
 ```
+
+
+Arguments with embedded whitespace
+----------------------------------
+
+Arguments that have embedded whitespace have to be quoted with either
+single or double quotes to be considered as a single
+argument.
+
+
+e.g. Given an option specification list with the following format:
+
+``` erlang
+    OptSpecList =
+        [
+         {define,  $D, "define",  string,  "Define a variable"},
+         {user,    $u, "user",    string,  "User name"}
+        ].
+```
+
+The following invocation:
+
+``` erlang
+    getopt:parse(OptSpecList,
+                 "-D'FOO=VAR 123' --define \"VAR WITH SPACES\" -u\"my user name\"").
+```
+
+would return:
+
+``` erlang
+    {ok,{[{define,"FOO=VAR 123"},
+          {define,"VAR WITH SPACES"},
+          {user,"my user name"}],
+         []}}
+```
+
+When parsing a command line with unclosed quotes the last argument
+will be a single string starting at the position where the last quote
+was entered.
+
+e.g. The following invocation:
+
+``` erlang
+    getopt:parse(OptSpecList, "--user ' my user ' \"argument with unclosed quotes").
+```
+
+would return:
+
+``` erlang
+    {ok,{[{user," my user "}],
+         ["argument with unclosed quotes"]}}
+```
+
+
+Environment variable expansion
+------------------------------
+
+`getopt:parse/2` will expand environment variables when used with a command
+line that is passed as a single string. The formats that are supported
+for environment variable expansion are:
+
+    - $VAR (simple Unix/bash format)
+    - ${VAR} (full Unix/bash format)
+    - %VAR% (Windows format)
+
+If a variable is not present in the environment it will not be
+expanded. Variables can be expanded within double-quoted and free
+arguments. *getopt* will not expand environment variables within
+single-quoted arguments.
+
+e.g. Given the following option specification list:
+
+``` erlang
+    OptSpecList =
+        [
+         {path,    $p, "path",    string,  "File path"}
+        ].
+```
+
+The following invocation:
+
+``` erlang
+    getopt:parse(OptSpecList, "--path ${PATH} $NONEXISTENT_DUMMY_VAR").
+```
+
+would return (depending on the value of your PATH variable) something like:
+
+``` erlang
+    {ok,{[{path, "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"}],
+         ["$NONEXISTENT_DUMMY_VAR"]}}
+```
+
+Currently, *getopt* does not perform wildcard expansion of file paths.

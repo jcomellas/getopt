@@ -26,8 +26,8 @@
 %%% UNIT TESTS
 %%%-------------------------------------------------------------------
 
-%%% Test for the getopt/1 function
-parse_1_test_() ->
+%%% Main test for the getopt/1 function.
+parse_main_test_() ->
     Short           = {short,              $a,        undefined,            undefined,                      "Option with only short form and no argument"},
     Short2          = {short2,             $b,        undefined,            undefined,                      "Second option with only short form and no argument"},
     Short3          = {short3,             $c,        undefined,            undefined,                      "Third option with only short form and no argument"},
@@ -218,8 +218,8 @@ parse_1_test_() ->
     ].
 
 
-%% Real world test for getopt/1
-parse_2_test_() ->
+%% Real world test for getopt/1.
+parse_multiple_repetitions_test_() ->
     OptSpecList =
         [
          {define,      $D,        "define",      string,                "Define a variable"},
@@ -232,4 +232,45 @@ parse_2_test_() ->
       ?_assertEqual({ok, {[{define, "FOO"}, {define, "VAR1=VAL1"}, {define, "BAR"},
                            {verbose, true}, {verbose, true}, {debug, 2}, {offset, -61.0}, {debug, 1}, {debug, 4}], ["dummy1", "dummy2"]}},
                     parse(OptSpecList, "-DFOO -DVAR1=VAL1 -DBAR -vv -dd --offset=-61.0 --debug -dddd  dummy1 dummy2"))}
+    ].
+
+
+%% Arguments with spaces.
+parse_args_with_spaces_test_() ->
+    OptSpecList =
+        [
+         {define,      $D,        "define",      string,                "Define a variable"},
+         {user,        $u,        "user",        string,                "User name"}
+        ],
+    [
+     {"Arguments with spaces",
+      ?_assertEqual({ok, {[{define, "FOO BAR"}, {define, "VAR 1=VAL 1"}, {user, "my user name"}], ["  dummy1 dummy2   "]}},
+                    parse(OptSpecList, "-D'FOO BAR' -D\"VAR 1=VAL 1\" --user \"my user name\" '  dummy1 dummy2   "))}
+    ].
+
+
+%% Arguments with emulated shell variable expansion.
+parse_variable_expansion_test_() ->
+    Path = os:getenv("PATH"),
+    false = os:getenv("DUMMY_VAR_THAT_MUST_NOT_EXIST"),
+    OptSpecList =
+        [
+         {path,        $p,        "path",        string,                "File path"}
+        ],
+    [
+     {"Shell variable expansion (simple Unix/bash format)",
+      ?_assertEqual({ok, {[{path, Path}], ["$DUMMY_VAR_THAT_MUST_NOT_EXIST"]}},
+                    parse(OptSpecList, "--path $PATH $DUMMY_VAR_THAT_MUST_NOT_EXIST"))},
+     {"Shell variable expansion (full Unix/bash format)",
+      ?_assertEqual({ok, {[{path, Path}], ["${DUMMY_VAR_THAT_MUST_NOT_EXIST}"]}},
+                    parse(OptSpecList, " --path ${PATH} ${DUMMY_VAR_THAT_MUST_NOT_EXIST}  "))},
+     {"Incomplete variable expansion (full Unix/bash format)",
+      ?_assertEqual({ok, {[{path, "${PATH"}], ["${DUMMY_VAR_THAT_MUST_NOT_EXIST}"]}},
+                    parse(OptSpecList, " --path ${PATH ${DUMMY_VAR_THAT_MUST_NOT_EXIST}  "))},
+     {"Shell variable expansion (Windows format)",
+      ?_assertEqual({ok, {[{path, Path}], ["%DUMMY_VAR_THAT_MUST_NOT_EXIST%"]}},
+                    parse(OptSpecList, " --path %PATH% %DUMMY_VAR_THAT_MUST_NOT_EXIST%  "))},
+     {"Incomplete variable expansion (Windows format)",
+      ?_assertEqual({ok, {[{path, "%PATH"}], ["%DUMMY_VAR_THAT_MUST_NOT_EXIST%"]}},
+                    parse(OptSpecList, " --path %PATH %DUMMY_VAR_THAT_MUST_NOT_EXIST%  "))}
     ].
