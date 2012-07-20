@@ -13,7 +13,7 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
--import(getopt, [parse/2]).
+-import(getopt, [parse/2, tokenize/1]).
 
 -define(NAME(Opt), element(1, Opt)).
 -define(SHORT(Opt), element(2, Opt)).
@@ -273,4 +273,13 @@ parse_variable_expansion_test_() ->
      {"Incomplete variable expansion (Windows format)",
       ?_assertEqual({ok, {[{path, "%PATH"}], ["%DUMMY_VAR_THAT_MUST_NOT_EXIST%"]}},
                     parse(OptSpecList, " --path %PATH %DUMMY_VAR_THAT_MUST_NOT_EXIST%  "))}
+    ].
+
+
+tokenize_test_() ->
+    %% Path = os:getenv("PATH"),
+    [
+     {"Tokenize",
+      ?_assertEqual(["ABC","abc","1234","5678","DEFGHI","\"JKL \"", "$PATH"],
+                    tokenize("  ABC abc '1234' \"5678\" 'DEF'\"GHI\" '\"JKL \"'  \\$PATH"))}
     ].

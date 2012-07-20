@@ -39,6 +39,8 @@ The *getopt* module provides four functions:
 parse([{Name, Short, Long, ArgSpec, Help}], Args :: string() | [string()]) ->
     {ok, {Options, NonOptionArgs}} | {error, {Reason, Data}}
 
+tokenize(CmdLine :: string()) -> [string()]
+
 usage([{Name, Short, Long, ArgSpec, Help}], ProgramName :: string()) -> ok
 
 usage([{Name, Short, Long, ArgSpec, Help}], ProgramName :: string(),
@@ -135,6 +137,21 @@ Will return:
       {dbname,"users"},
       {verbose,3}],
      ["dummy1","dummy2"]}}
+```
+
+The ``tokenize/1`` function will separate a command line string into
+tokens, taking into account whether an argument is single or double
+quoted, a character is escaped or there are environment variables to
+be expanded. e.g.:
+
+``` erlang
+getopt:tokenize("  --name John\\ Smith --path \"John's Files\" -u ${USER}").
+```
+
+Will return something like:
+
+``` erlang
+["--name","John Smith","--path","John's Files","-u","jsmith"]
 ```
 
 The other functions exported by the ``getopt`` module (``usage/2``, ``usage/3``
@@ -446,3 +463,22 @@ would return (depending on the value of your PATH variable) something like:
 ```
 
 Currently, *getopt* does not perform wildcard expansion of file paths.
+
+
+Escaping arguments
+==================
+
+Any character can be escaped by prepending the \ (backslash) character
+to it.
+
+e.g.
+
+``` erlang
+getopt:parse(OptSpecList, "--path /john\\'s\\ files dummy").
+```
+
+Will return:
+
+``` erlang
+{ok,{[{path,"/john's files"}],["dummy"]}}
+```
