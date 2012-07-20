@@ -1,7 +1,7 @@
 %% -*- mode: Erlang; fill-column: 75; comment-column: 50; -*-
 {application, getopt,
  [{description, "Command-line options parser for Erlang"},
-  {vsn, "0.4.4"},
+  {vsn, "0.5.0"},
   {modules, []},
   {registered, []},
   {applications, [kernel, stdlib]}]}.
