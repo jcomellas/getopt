@@ -141,7 +141,7 @@ Will return:
 
 The ``tokenize/1`` function will separate a command line string into
 tokens, taking into account whether an argument is single or double
-quoted, a character is escaped or there are environment variables to
+quoted, a character is escaped or if there are environment variables to
 be expanded. e.g.:
 
 ``` erlang
