@@ -660,7 +660,7 @@ tokenize_quoted_arg(_QuotationMark, CmdLine, Acc, ArgAcc) ->
     tokenize(CmdLine, Acc, ArgAcc).
 
 
--spec expand_env_var(CmdLine :: string()) -> string().
+-spec expand_env_var(CmdLine :: string()) -> {string(), string()}.
 expand_env_var(CmdLine) ->
     case CmdLine of
         "${" ++ Tail ->
@@ -671,7 +671,7 @@ expand_env_var(CmdLine) ->
             expand_env_var("%", $%, Tail, [])
     end.
 
--spec expand_env_var(Prefix :: string(), EndMark :: char(), CmdLine :: string(), Acc :: string()) -> string().
+-spec expand_env_var(Prefix :: string(), EndMark :: char(), CmdLine :: string(), Acc :: string()) -> {string(), string()}.
 expand_env_var(Prefix, EndMark, [Char | Tail], Acc)
   when (Char >= $A andalso Char =< $Z) orelse (Char >= $a andalso Char =< $z) orelse
        (Char >= $0 andalso Char =< $9) orelse (Char =:= $_) ->
@@ -682,7 +682,7 @@ expand_env_var(Prefix, _EndMark, CmdLine, Acc) ->
     {CmdLine, Prefix ++ lists:reverse(Acc)}.
 
 
--spec expand_env_var(Prefix :: string(), CmdLine :: string(), Acc :: string()) -> string().
+-spec expand_env_var(Prefix :: string(), CmdLine :: string(), Acc :: string()) -> {string(), string()}.
 expand_env_var(Prefix, [Char | Tail], Acc)
   when (Char >= $A andalso Char =< $Z) orelse (Char >= $a andalso Char =< $z) orelse
        (Char >= $0 andalso Char =< $9) orelse (Char =:= $_) ->
