@@ -25,6 +25,12 @@
 %% Indentation of the help messages in number of tabs.
 -define(INDENTATION, 3).
 
+%% Size of string per option in help messages.
+-define(HELP_STRING_SIZE, 60).
+
+%% Possible last help string overflow that will not be moved to new line
+-define(ALLOWED_HELP_OVERFLOW, 4).
+
 %% Position of each field in the option specification tuple.
 -define(OPT_NAME, 1).
 -define(OPT_SHORT, 2).
@@ -595,12 +601,12 @@ add_option_help(Prefix, Help, Acc) when is_list(Help), Help =/= [] ->
     case ((?INDENTATION * ?TAB_LENGTH) - 2 - length(FlatPrefix)) of
         TabSize when TabSize > 0 ->
             Tab = lists:duplicate(ceiling(TabSize / ?TAB_LENGTH), $\t),
-            [[$\s, $\s, FlatPrefix, Tab, Help, $\n] | Acc];
+            [[$\s, $\s, FlatPrefix, Tab, split_help_into_lines(Help), $\n] | Acc];
         _ ->
             % The indentation for the option description is 3 tabs (i.e. 24 characters)
             % IMPORTANT: Change the number of tabs below if you change the
             %            value of the INDENTATION macro.
-            [[$\t, $\t, $\t, Help, $\n], [$\s, $\s, FlatPrefix, $\n] | Acc]
+            [[$\t, $\t, $\t, split_help_into_lines(Help), $\n], [$\s, $\s, FlatPrefix, $\n] | Acc]
     end;
 add_option_help(_Opt, _Prefix, Acc) ->
     Acc.
@@ -715,3 +721,27 @@ ceiling(X) ->
         _ ->
             T
     end.
+
+%% @doc Splits long help string in shorter lines imploding it with newline
+-spec split_help_into_lines(list()) -> list().
+split_help_into_lines(Help) ->
+	split_help_into_lines(Help, ?HELP_STRING_SIZE).
+
+split_help_into_lines(Help, Help_len) when length(Help) =< Help_len ->
+	Help;
+split_help_into_lines(Help, Help_len) ->
+	split_help_into_lines(Help, Help_len, []).
+
+split_help_into_lines(Help, Help_len, Acc) when length(Help) =< Help_len ->
+	lists:flatten([Acc | lists:flatten(lists:duplicate(?INDENTATION, $\t)) ++ Help]);
+split_help_into_lines(Help, Help_len, Acc) ->
+	{Line, Rest} = lists:split(Help_len, Help),
+	{Line2, Rest2, NL} = if
+		length(Rest) >= ?ALLOWED_HELP_OVERFLOW -> {Line, Rest, "\n"};
+		true -> {Help, [], []}
+	end,
+	Acc2 = case Acc of
+		[] -> [Line2 | NL];
+		_ -> [Acc | lists:flatten([lists:duplicate(?INDENTATION, $\t) | Line2 ++ NL])]
+	end,
+	split_help_into_lines(Rest2, Help_len, Acc2).
