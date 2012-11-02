@@ -25,6 +25,12 @@
 %% Indentation of the help messages in number of tabs.
 -define(INDENTATION, 3).
 
+%% Size of string per option in help messages.
+-define(HELP_STRING_SIZE, 60).
+
+%% Possible last help string overflow that will not be moved to new line
+-define(ALLOWED_HELP_OVERFLOW, 4).
+
 %% Position of each field in the option specification tuple.
 -define(OPT_NAME, 1).
 -define(OPT_SHORT, 2).
@@ -560,7 +566,7 @@ usage_cmd_line([], Acc) ->
 usage_options(OptSpecList) ->
     lists:flatten(lists:reverse(usage_options_reverse(OptSpecList, []))).
 
-usage_options_reverse([{Name, Short, Long, _ArgSpec, Help} | Tail], Acc) ->
+usage_options_reverse([{Name, Short, Long, ArgSpec, Help} | Tail], Acc) ->
     Prefix =
         case Long of
             undefined ->
@@ -582,7 +588,13 @@ usage_options_reverse([{Name, Short, Long, _ArgSpec, Help} | Tail], Acc) ->
                         [$-, Short, $,, $\s, $-, $- | Long]
                 end
         end,
-    usage_options_reverse(Tail, add_option_help(Prefix, Help, Acc));
+	Prefix2 = case ArgSpec of
+		{_Type, Default} ->
+			concat([Prefix, " ", "(", Default, ")"]);
+		_ ->
+			Prefix
+	end,
+    usage_options_reverse(Tail, add_option_help(Prefix2, Help, Acc));
 usage_options_reverse([], Acc) ->
     Acc.
 
@@ -595,12 +607,12 @@ add_option_help(Prefix, Help, Acc) when is_list(Help), Help =/= [] ->
     case ((?INDENTATION * ?TAB_LENGTH) - 2 - length(FlatPrefix)) of
         TabSize when TabSize > 0 ->
             Tab = lists:duplicate(ceiling(TabSize / ?TAB_LENGTH), $\t),
-            [[$\s, $\s, FlatPrefix, Tab, Help, $\n] | Acc];
+            [[$\s, $\s, FlatPrefix, Tab, split_help_into_lines(Help), $\n] | Acc];
         _ ->
             % The indentation for the option description is 3 tabs (i.e. 24 characters)
             % IMPORTANT: Change the number of tabs below if you change the
             %            value of the INDENTATION macro.
-            [[$\t, $\t, $\t, Help, $\n], [$\s, $\s, FlatPrefix, $\n] | Acc]
+            [[lists:duplicate(?INDENTATION, $\t), split_help_into_lines(Help), $\n], [$\s, $\s, FlatPrefix, $\n] | Acc]
     end;
 add_option_help(_Opt, _Prefix, Acc) ->
     Acc.
@@ -715,3 +727,42 @@ ceiling(X) ->
         _ ->
             T
     end.
+
+%% @doc Splits long help string in shorter lines imploding it with newline
+-spec split_help_into_lines(list()) -> list().
+split_help_into_lines(Help) ->
+	split_help_into_lines(Help, ?HELP_STRING_SIZE).
+
+split_help_into_lines(Help, Help_len) when length(Help) =< Help_len ->
+	Help;
+split_help_into_lines(Help, Help_len) ->
+	split_help_into_lines(Help, Help_len, []).
+
+split_help_into_lines(Help, Help_len, Acc) when length(Help) =< Help_len ->
+	lists:flatten([Acc | lists:flatten(lists:duplicate(?INDENTATION, $\t)) ++ Help]);
+split_help_into_lines(Help, Help_len, Acc) ->
+	{Line, Rest} = lists:split(Help_len, Help),
+	{Line2, Rest2, NL} = if
+		length(Rest) >= ?ALLOWED_HELP_OVERFLOW -> {Line, Rest, "\n"};
+		true -> {Help, [], []}
+	end,
+	Acc2 = case Acc of
+		[] -> [Line2 | NL];
+		_ -> [Acc | lists:flatten([lists:duplicate(?INDENTATION, $\t) | Line2 ++ NL])]
+	end,
+	split_help_into_lines(Rest2, Help_len, Acc2).
+
+concat(List) ->
+	lists:flatten(lists:reverse(flatmap(fun to_list/1, List))).
+
+flatmap(Fun, List) ->
+	flatmap(Fun, List, []).
+flatmap(_Fun, [], Acc) ->
+	Acc;
+flatmap(Fun, [H | T], Acc) ->
+	flatmap(Fun, T, [Fun(H) | Acc]).
+
+to_list(X) when is_integer(X) -> integer_to_list(X);
+to_list(X) when is_float(X) -> float_to_list(X);
+to_list(X) when is_atom(X) -> atom_to_list(X);
+to_list(X) when is_list(X) -> X.
