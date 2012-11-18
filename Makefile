@@ -6,41 +6,30 @@ EPATH := -pa ebin
 TEST_EPATH := -pa .eunit
 
 DIALYZER=dialyzer
-DIALYZER_OPTS=-Wno_return -Wrace_conditions -Wunderspecs -Wbehaviours
-PLT_FILE=.getopt_plt
-APPS=kernel stdlib
+DIALYZER_OPTS=-Wno_return -Wrace_conditions -Wunderspecs -Wno_undefined_callbacks --fullpath
 
-.PHONY: all clean test
+.PHONY: all clean compile console dialyze doc test test-console
 
 all: compile
-
-compile:
-	@$(REBAR) compile
-
-doc:
-	@$(REBAR) doc
-
-plt: compile
-	@$(DIALYZER) --build_plt --output_plt $(PLT_FILE) --apps $(APPS) ebin
-
-check_plt: compile
-	@$(DIALYZER) --check_plt --plt $(PLT_FILE) --apps $(APPS) ebin
-
-analyze: compile
-	@$(DIALYZER) --plt $(PLT_FILE) $(DIALYZER_OPTS) -r ebin
 
 clean:
 	@$(REBAR) clean
 
+compile:
+	@$(REBAR) compile
+
+console:
+	$(ERL) -sname $(APPLICATION) $(EPATH)
+
+dialyze: compile
+	@$(DIALYZER) $(DIALYZER_OPTS) -r ./
+
+doc:
+	@$(REBAR) doc
+
 test:
 	@$(REBAR) eunit
 
-dialyzer:
-	@$(REBAR) analyze
-
-console: compile
-	$(ERL) -sname $(APPLICATION) $(EPATH)
-
-testshell: test
+test-console:
 	$(ERL) -sname $(APPLICATION)_test $(TEST_EPATH)
 
