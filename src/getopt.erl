@@ -28,25 +28,30 @@
                               (Char) =:= $\n orelse (Char) =:= $\r)).
 
 %% Atom indicating the data type that an argument can be converted to.
--type arg_type() :: 'atom' | 'binary' | 'boolean' | 'float' | 'integer' | 'string'.
+-type arg_type()                                :: 'atom' | 'binary' | 'boolean' | 'float' | 'integer' | 'string'.
 %% Data type that an argument can be converted to.
--type arg_value() :: atom() | binary() | boolean() | float() | integer() | string().
+-type arg_value()                               :: atom() | binary() | boolean() | float() | integer() | string().
 %% Argument specification.
--type arg_spec() :: arg_type() | {arg_type(), arg_value()} | undefined.
+-type arg_spec()                                :: arg_type() | {arg_type(), arg_value()} | undefined.
 %% Option type and optional default argument.
--type simple_option() :: atom().
--type compound_option() :: {atom(), arg_value()}.
--type option() :: simple_option() | compound_option().
+-type simple_option()                           :: atom().
+-type compound_option()                         :: {atom(), arg_value()}.
+-type option()                                  :: simple_option() | compound_option().
 %% Command line option specification.
 -type option_spec() :: {
-                   Name    :: atom(),
-                   Short   :: char() | undefined,
-                   Long    :: string() | undefined,
-                   ArgSpec :: arg_spec(),
-                   Help    :: string() | undefined
+                   Name                         :: atom(),
+                   Short                        :: char() | undefined,
+                   Long                         :: string() | undefined,
+                   ArgSpec                      :: arg_spec(),
+                   Help                         :: string() | undefined
                   }.
 %% Output streams
--type output_stream() :: 'standard_io' | 'standard_error'.
+-type output_stream()                           :: 'standard_io' | 'standard_error'.
+
+%% For internal use
+-type usage_line()                              :: {OptionText :: string(), HelpText :: string()}.
+-type usage_line_with_length()                  :: {OptionLength :: non_neg_integer(), OptionText :: string(), HelpText :: string()}.
+
 
 -export_type([arg_type/0, arg_value/0, arg_spec/0, simple_option/0, compound_option/0, option/0, option_spec/0]).
 
@@ -569,97 +574,115 @@ usage_cmd_line_option({Name, Short, Long, ArgSpec, _Help}) when is_tuple(ArgSpec
 
 
 %% @doc Return a list of help messages to print for each of the options and arguments.
--spec usage_options([option_spec()]) -> string().
+-spec usage_options([option_spec()]) -> [string()].
 usage_options(OptSpecList) ->
     usage_options(OptSpecList, []).
 
 
-%% @doc Return a list of help messages to print for each of the options and arguments.
--spec usage_options([option_spec()], [{OptionName :: string(), Help :: string()}]) -> string().
+%% @doc Return a list of usage lines to print for each of the options and arguments.
+-spec usage_options([option_spec()], [{OptionName :: string(), Help :: string()}]) -> [string()].
 usage_options(OptSpecList, CustomHelp) ->
-    {MaxLength0, OptionHelpRows0} = add_option_spec_help_rows(OptSpecList, 0, []),
-    {MaxLength, OptionHelpRows} = add_custom_help_rows(CustomHelp, MaxLength0, OptionHelpRows0),
+    %% Add the usage lines corresponding to the option specifications.
+    {MaxOptionLength0, UsageLines0} = add_option_spec_help_lines(OptSpecList, 0, []),
+    %% Add the custom usage lines.
+    {MaxOptionLength, UsageLines} = add_custom_help_lines(CustomHelp, MaxOptionLength0, UsageLines0),
     LineLength = line_length(),
-    lists:reverse([format_help_line(MaxLength + 1, LineLength, OptionHelp) ||
-                      OptionHelp <- OptionHelpRows]).
+    lists:reverse([format_usage_line(MaxOptionLength + 1, LineLength, UsageLine) || UsageLine <- UsageLines]).
 
 
-add_option_spec_help_rows([{Name, Short, Long, _ArgSpec, _Help} = OptSpec | Tail], MaxOptionLength, Acc) ->
-    Option =
-        case Long of
-            undefined ->
-                case Short of
-                    %% Neither short nor long form (non-option argument).
-                    undefined -> [$<, atom_to_list(Name), $>];
-                    %% Only short form.
-                    _         -> [$-, Short]
-                end;
-            _ ->
-                case Short of
-                    %% Only long form.
-                    undefined -> [$-, $- | Long];
-                    %% Both short and long form.
-                    _         -> [$-, Short, $,, $\s, $-, $- | Long]
-                end
-        end,
-    {NewMaxOptionLength, OptionSpecHelpWithLength} = get_option_help_length({Option, usage_help(OptSpec)}, MaxOptionLength),
-    add_option_spec_help_rows(Tail, NewMaxOptionLength, [OptionSpecHelpWithLength | Acc]);
-add_option_spec_help_rows([], MaxOptionLength, Acc) ->
+-spec add_option_spec_help_lines([option_spec()], PrevMaxOptionLength :: non_neg_integer(), [usage_line_with_length()]) ->
+                                        {MaxOptionLength :: non_neg_integer(), [usage_line_with_length()]}.
+add_option_spec_help_lines([OptSpec | Tail], PrevMaxOptionLength, Acc) ->
+    OptionText = usage_option_text(OptSpec),
+    HelpText = usage_help_text(OptSpec),
+    {MaxOptionLength, ColsWithLength} = get_max_option_length({OptionText, HelpText}, PrevMaxOptionLength),
+    add_option_spec_help_lines(Tail, MaxOptionLength, [ColsWithLength | Acc]);
+add_option_spec_help_lines([], MaxOptionLength, Acc) ->
     {MaxOptionLength, Acc}.
 
 
--spec usage_help(option_spec()) -> string().
-usage_help({_Name, _Short, _Long, {_ArgType, ArgValue}, [_ | _] = Help}) ->
+-spec add_custom_help_lines([usage_line()], PrevMaxOptionLength :: non_neg_integer(), [usage_line_with_length()]) ->
+                                   {MaxOptionLength :: non_neg_integer(), [usage_line_with_length()]}.
+add_custom_help_lines([CustomCols | Tail], PrevMaxOptionLength, Acc) ->
+    {MaxOptionLength, ColsWithLength} = get_max_option_length(CustomCols, PrevMaxOptionLength),
+    add_custom_help_lines(Tail, MaxOptionLength, [ColsWithLength | Acc]);
+add_custom_help_lines([], MaxOptionLength, Acc) ->
+    {MaxOptionLength, Acc}.
+
+
+-spec usage_option_text(option_spec()) -> string().
+usage_option_text({Name, undefined, undefined, _ArgSpec, _Help}) ->
+    %% Neither short nor long form (non-option argument).
+    "<" ++ atom_to_list(Name) ++ ">";
+usage_option_text({_Name, Short, undefined, _ArgSpec, _Help}) ->
+    %% Only short form.
+    [$-, Short];
+usage_option_text({_Name, undefined, Long, _ArgSpec, _Help}) ->
+    %% Only long form.
+    [$-, $- | Long];
+usage_option_text({_Name, Short, Long, _ArgSpec, _Help}) ->
+    %% Both short and long form.
+    [$-, Short, $,, $\s, $-, $- | Long].
+
+
+-spec usage_help_text(option_spec()) -> string().
+usage_help_text({_Name, _Short, _Long, {_ArgType, ArgValue}, [_ | _] = Help}) ->
     Help ++ " [default: " ++ default_arg_value_to_string(ArgValue) ++ "]";
-usage_help({_Name, _Short, _Long, _ArgSpec, Help}) ->
+usage_help_text({_Name, _Short, _Long, _ArgSpec, Help}) ->
     Help.
 
 
-add_custom_help_rows([CustomOptionHelp | Tail], MaxOptionLength, Acc) ->
-    {NewMaxOptionLength, CustomOptionHelpWithLength} = get_option_help_length(CustomOptionHelp, MaxOptionLength),
-    add_custom_help_rows(Tail, NewMaxOptionLength, [CustomOptionHelpWithLength | Acc]);
-add_custom_help_rows([], MaxOptionLength, Acc) ->
-    {MaxOptionLength, Acc}.
+%% @doc Calculate the maximum width of the column that shows the option's short
+%%      and long form.
+-spec get_max_option_length(usage_line(), PrevMaxOptionLength :: non_neg_integer()) ->
+                                   {MaxOptionLength :: non_neg_integer(), usage_line_with_length()}.
+get_max_option_length({OptionText, HelpText}, PrevMaxOptionLength) ->
+    OptionLength = length(OptionText),
+    {erlang:max(OptionLength, PrevMaxOptionLength), {OptionLength, OptionText, HelpText}}.
 
 
-get_option_help_length({UnflattenedOption, Help}, PrevMaxOptionLength) ->
-    Option = lists:flatten(UnflattenedOption),
-    OptionLength = length(Option),
-    %% Calculate the maximum width of the column that shows the option's name.
-    MaxOptionLength = if
-                          OptionLength > PrevMaxOptionLength -> OptionLength;
-                          true                               -> PrevMaxOptionLength
-                      end,
-    {MaxOptionLength, {OptionLength, Option, Help}}.
-
-
--spec format_help_line(MaxOptionLength :: non_neg_integer(), LineLength :: non_neg_integer(),
-                       {OptionLength :: non_neg_integer(), Option :: string(), Help :: [string()]}) -> iolist().
-format_help_line(MaxOptionLength, LineLength, {OptionLength, Option, [_ | _] = Help}) ->
-    OptionColumnWidth = MaxOptionLength + 3,
-    HelpLines = wrap_text_line(LineLength - OptionColumnWidth, Help),
-    case OptionColumnWidth < LineLength of
-        true ->
-            %% Lines in which the column with the options is narrower than that of the console
-            FirstLineSep = lists:duplicate(MaxOptionLength - OptionLength + 1, $\s),
-            Indentation = [$\n | lists:duplicate(MaxOptionLength + 3, $\s)],
-            ["  ", Option, FirstLineSep, hd(HelpLines), [[Indentation, Line] || Line <- tl(HelpLines)], $\n];
-        false ->
-            ["  ", Option, [["\n  ", Line] || Line <- HelpLines], $\n]
-    end;
-format_help_line(_MaxOptionLength, _LineLength, {_OptionLength, Option, _Help}) ->
-    ["  ", Option, $\n].
+%% @doc Format the usage line that is shown for the options' usage. Each usage
+%%      line has 2 columns. The first column shows the options in their short
+%%      and long form. The second column shows the wrapped (if necessary) help
+%%      text lines associated with each option. e.g.:
+%%
+%%        -h, --host  Database server host name or IP address; this is the
+%%                    hostname of the server where the database is running
+%%                    [default: localhost]
+%%        -p, --port  Database server port [default: 1000]
+%%
+-spec format_usage_line(MaxOptionLength :: non_neg_integer(), LineLength :: non_neg_integer(),
+                        usage_line_with_length()) -> iolist().
+format_usage_line(MaxOptionLength, LineLength, {OptionLength, OptionText, [_ | _] = HelpText})
+  when MaxOptionLength < (LineLength div 2) ->
+    %% If the width of the column where the options are shown is smaller than
+    %% half the width of a console line then we show the help text line aligned
+    %% next to its corresponding option, with a separation of at least 2
+    %% characters.
+    [Head | Tail] = wrap_text_line(LineLength - MaxOptionLength - 3, HelpText),
+    FirstLineIndentation = lists:duplicate(MaxOptionLength - OptionLength + 1, $\s),
+    Indentation = [$\n | lists:duplicate(MaxOptionLength + 3, $\s)],
+    ["  ", OptionText, FirstLineIndentation, Head,
+     [[Indentation, Line] || Line <- Tail], $\n];
+format_usage_line(_MaxOptionLength, LineLength, {_OptionLength, OptionText, [_ | _] = HelpText}) ->
+    %% If the width of the first column is bigger than the width of a console
+    %% line, we show the help text on the next line with an indentation of 6
+    %% characters.
+    HelpLines = wrap_text_line(LineLength - 6, HelpText),
+    ["  ", OptionText, [["\n      ", Line] || Line <- HelpLines], $\n];
+format_usage_line(_MaxOptionLength, _LineLength, {_OptionLength, OptionText, _HelpText}) ->
+    ["  ", OptionText, $\n].
 
 
 %% @doc Wrap a text line converting it into several text lines so that the
 %%      length of each one of them is never over HelpLength characters.
--spec wrap_text_line(HelpLength :: non_neg_integer(), Help :: string()) -> [string()].
-wrap_text_line(HelpLength, Help) ->
-    wrap_text_line(HelpLength, Help, [], 0, []).
+-spec wrap_text_line(Length :: non_neg_integer(), Text :: string()) -> [string()].
+wrap_text_line(Length, Text) ->
+    wrap_text_line(Length, Text, [], 0, []).
 
-wrap_text_line(HelpLength, [Char | Tail], Acc, Count, CurrentLineAcc) when Count < HelpLength ->
-    wrap_text_line(HelpLength, Tail, Acc, Count + 1, [Char | CurrentLineAcc]);
-wrap_text_line(HelpLength, [_ | _] = Help, Acc, Count, CurrentLineAcc) ->
+wrap_text_line(Length, [Char | Tail], Acc, Count, CurrentLineAcc) when Count < Length ->
+    wrap_text_line(Length, Tail, Acc, Count + 1, [Char | CurrentLineAcc]);
+wrap_text_line(Length, [_ | _] = Help, Acc, Count, CurrentLineAcc) ->
     %% Look for the first whitespace character in the current (reversed) line
     %% buffer to get a wrapped line. If there is no whitespace just cut the
     %% line at the position corresponding to the maximum length.
@@ -669,11 +692,11 @@ wrap_text_line(HelpLength, [_ | _] = Help, Acc, Count, CurrentLineAcc) ->
                                      _ ->
                                          {[], CurrentLineAcc}
                                  end,
-    wrap_text_line(HelpLength, Help, [lists:reverse(WrappedLine) | Acc], length(NextLineAcc), NextLineAcc);
-wrap_text_line(_HelpLength, [], Acc, _Count, [_ | _] = CurrentLineAcc) ->
+    wrap_text_line(Length, Help, [lists:reverse(WrappedLine) | Acc], length(NextLineAcc), NextLineAcc);
+wrap_text_line(_Length, [], Acc, _Count, [_ | _] = CurrentLineAcc) ->
     %% If there was a non-empty line when we reached the buffer, add it to the accumulator
     lists:reverse([lists:reverse(CurrentLineAcc) | Acc]);
-wrap_text_line(_HelpLength, [], Acc, _Count, _CurrentLineAcc) ->
+wrap_text_line(_Length, [], Acc, _Count, _CurrentLineAcc) ->
     lists:reverse(Acc).
 
 
