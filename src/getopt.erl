@@ -15,6 +15,7 @@
 -export([usage_cmd_line/2]).
 
 -define(LINE_LENGTH, 75).
+-define(MIN_USAGE_COMMAND_LINE_OPTION_LENGTH, 25).
 
 %% Position of each field in the option specification tuple.
 -define(OPT_NAME, 1).
@@ -488,8 +489,8 @@ usage(OptSpecList, ProgramName, CmdLineTail) ->
 %%       is a string that is added to the end of the usage command line.
 -spec usage([option_spec()], ProgramName :: string(), CmdLineTail :: string(), output_stream() | [{string(), string()}]) -> ok.
 usage(OptSpecList, ProgramName, CmdLineTail, OutputStream) when is_atom(OutputStream) ->
-    io:format(OutputStream, "~s ~s~n~n~s~n",
-              [usage_cmd_line(ProgramName, OptSpecList), CmdLineTail, usage_options(OptSpecList)]);
+    io:format(OutputStream, "~s~n~n~s~n",
+              [usage_cmd_line(ProgramName, OptSpecList, CmdLineTail), usage_options(OptSpecList)]);
 %% @doc  Show a message on standard_error indicating the command line options and
 %%       arguments that are supported by the program. The CmdLineTail and OptionsTail
 %%       arguments are a string that is added to the end of the usage command line
@@ -505,72 +506,94 @@ usage(OptSpecList, ProgramName, CmdLineTail, OptionsTail) ->
 -spec usage([option_spec()], ProgramName :: string(), CmdLineTail :: string(),
             [{OptionName :: string(), Help :: string()}], output_stream()) -> ok.
 usage(OptSpecList, ProgramName, CmdLineTail, OptionsTail, OutputStream) ->
-    io:format(OutputStream, "~s ~s~n~n~s~n",
-              [usage_cmd_line(ProgramName, OptSpecList), CmdLineTail, usage_options(OptSpecList, OptionsTail)]).
+    io:format(OutputStream, "~s~n~n~s~n",
+              [usage_cmd_line(ProgramName, OptSpecList, CmdLineTail), usage_options(OptSpecList, OptionsTail)]).
 
 
 -spec usage_cmd_line(ProgramName :: string(), [option_spec()]) -> iolist().
 usage_cmd_line(ProgramName, OptSpecList) ->
+    usage_cmd_line(ProgramName, OptSpecList, "").
+
+-spec usage_cmd_line(ProgramName :: string(), [option_spec()], CmdLineTail :: string()) -> iolist().
+usage_cmd_line(ProgramName, OptSpecList, CmdLineTail) ->
     Prefix = "Usage: " ++ ProgramName,
     PrefixLength = length(Prefix),
-    Indentation = lists:duplicate(PrefixLength, $\s),
-    [Prefix | usage_cmd_line_options(line_length() - PrefixLength, Indentation, OptSpecList)].
-
-
-%% @doc Return a string with the syntax for the command line options and arguments.
--spec usage_cmd_line_options(LineLength :: non_neg_integer(), Indentation :: string(), [option_spec()]) -> iolist().
-usage_cmd_line_options(LineLength, Indentation, OptSpecList) ->
-    usage_cmd_line_options(LineLength, Indentation, OptSpecList, [], 0, []).
-
-usage_cmd_line_options(LineLength, Indentation, [OptSpec | Tail], LineAcc, AccLength, Acc) ->
-    Option = lists:flatten(usage_cmd_line_option(OptSpec)),
-    OptionLength = length(Option),
-    %% We add the length of this command line option together with the corresponding
-    %% space to the accumulated length,
-    NewAccLength = AccLength + OptionLength + 1,
+    LineLength = line_length(),
+    %% Only align the command line options after the program name when there is
+    %% enough room to do so (i.e. at least 25 characters). If not, show the
+    %% command line options below the program name with a 2-character indentation.
     if
-        NewAccLength < LineLength ->
-            usage_cmd_line_options(LineLength, Indentation, Tail, [Option | LineAcc], NewAccLength, Acc);
+        (LineLength - PrefixLength) > ?MIN_USAGE_COMMAND_LINE_OPTION_LENGTH ->
+            Indentation = lists:duplicate(PrefixLength, $\s),
+            [FirstOptLine | OptLines] = usage_cmd_line_options(LineLength - PrefixLength, OptSpecList, CmdLineTail),
+            IndentedOptLines = [[Indentation | OptLine] || OptLine <- OptLines],
+            [Prefix, FirstOptLine | IndentedOptLines];
         true ->
-            usage_cmd_line_options(LineLength, Indentation, Tail, [Option, Indentation],
-                                   length(Option) + 1, [lists:reverse([$\n | LineAcc]) | Acc])
+            IndentedOptLines = [[" " | OptLine] || OptLine <- usage_cmd_line_options(LineLength, OptSpecList, CmdLineTail)],
+            [Prefix, $\n, IndentedOptLines]
+    end.
+
+
+%% @doc Return a list of the lines corresponding to the usage command line
+%%      already wrapped according to the maximum MaxLineLength.
+-spec usage_cmd_line_options(MaxLineLength :: non_neg_integer(), [option_spec()], CmdLineTail :: string()) -> iolist().
+usage_cmd_line_options(MaxLineLength, OptSpecList, CmdLineTail) ->
+    usage_cmd_line_options(MaxLineLength, OptSpecList ++ string:tokens(CmdLineTail, " "), [], 0, []).
+
+usage_cmd_line_options(MaxLineLength, [OptSpec | Tail], LineAcc, LineAccLength, Acc) ->
+    Option = [$\s | lists:flatten(usage_cmd_line_option(OptSpec))],
+    OptionLength = length(Option),
+    %% We accumulate the options in LineAcc until its length is over the
+    %% maximum allowed line length. When that happens, we append the line in
+    %% LineAcc to the list with all the lines in the command line (Acc).
+    NewLineAccLength = LineAccLength + OptionLength,
+    if
+        NewLineAccLength < MaxLineLength ->
+            usage_cmd_line_options(MaxLineLength, Tail, [Option | LineAcc], NewLineAccLength, Acc);
+        true ->
+            usage_cmd_line_options(MaxLineLength, Tail, [Option], OptionLength + 1,
+                                   [lists:reverse([$\n | LineAcc]) | Acc])
     end;
-usage_cmd_line_options(LineLength, Indentation, [] = OptSpecList, [_ | _] = LineAcc, AccLength, Acc) ->
-    usage_cmd_line_options(LineLength, Indentation, OptSpecList, [],
-                           AccLength, [lists:reverse(LineAcc) | Acc]);
-usage_cmd_line_options(_LineLength, _Indentation, [], [], _AccLength, Acc) ->
+usage_cmd_line_options(MaxLineLength, [], [_ | _] = LineAcc, _LineAccLength, Acc) ->
+    %% If there was a non-empty line in LineAcc when there are no more options
+    %% to process, we add it to the list of lines to return.
+    usage_cmd_line_options(MaxLineLength, [], [], 0, [lists:reverse(LineAcc) | Acc]);
+usage_cmd_line_options(_MaxLineLength, [], [], _LineAccLength, Acc) ->
     lists:reverse(Acc).
 
 
 -spec usage_cmd_line_option(option_spec()) -> string().
 usage_cmd_line_option({_Name, Short, _Long, undefined, _Help}) when Short =/= undefined ->
     %% For options with short form and no argument.
-    [$\s, $[, $-, Short, $]];
+    [$[, $-, Short, $]];
 usage_cmd_line_option({_Name, _Short, Long, undefined, _Help}) when Long =/= undefined ->
     %% For options with only long form and no argument.
-    [$\s, $[, $-, $-, Long, $]];
+    [$[, $-, $-, Long, $]];
 usage_cmd_line_option({_Name, _Short, _Long, undefined, _Help}) ->
     [];
 usage_cmd_line_option({Name, Short, Long, ArgSpec, _Help}) when is_atom(ArgSpec) ->
     %% For options with no default argument.
     if
         %% For options with short form and argument.
-        Short =/= undefined -> [$\s, $[, $-, Short, $\s, $<, atom_to_list(Name), $>, $]];
+        Short =/= undefined -> [$[, $-, Short, $\s, $<, atom_to_list(Name), $>, $]];
         %% For options with only long form and argument.
-        Long =/= undefined  -> [$\s, $[, $-, $-, Long, $\s, $<, atom_to_list(Name), $>, $]];
+        Long =/= undefined  -> [$[, $-, $-, Long, $\s, $<, atom_to_list(Name), $>, $]];
         %% For options with neither short nor long form and argument.
-        true                -> [$\s, $[, $<, atom_to_list(Name), $>, $]]
+        true                -> [$[, $<, atom_to_list(Name), $>, $]]
     end;
 usage_cmd_line_option({Name, Short, Long, ArgSpec, _Help}) when is_tuple(ArgSpec) ->
     %% For options with default argument.
     if
         %% For options with short form and default argument.
-        Short =/= undefined -> [$\s, $[, $-, Short, $\s, $[, $<, atom_to_list(Name), $>, $], $]];
+        Short =/= undefined -> [$[, $-, Short, $\s, $[, $<, atom_to_list(Name), $>, $], $]];
         %% For options with only long form and default argument.
-        Long =/= undefined  -> [$\s, $[, $-, $-, Long, $\s, $[, $<, atom_to_list(Name), $>, $], $]];
+        Long =/= undefined  -> [$[, $-, $-, Long, $\s, $[, $<, atom_to_list(Name), $>, $], $]];
         %% For options with neither short nor long form and default argument.
-        true                -> [$\s, $[, $<, atom_to_list(Name), $>, $]]
-    end.
+        true                -> [$[, $<, atom_to_list(Name), $>, $]]
+    end;
+usage_cmd_line_option(Option) when is_list(Option) ->
+    %% For custom options that are added to the command line.
+    Option.
 
 
 %% @doc Return a list of help messages to print for each of the options and arguments.
@@ -586,8 +609,8 @@ usage_options(OptSpecList, CustomHelp) ->
     {MaxOptionLength0, UsageLines0} = add_option_spec_help_lines(OptSpecList, 0, []),
     %% Add the custom usage lines.
     {MaxOptionLength, UsageLines} = add_custom_help_lines(CustomHelp, MaxOptionLength0, UsageLines0),
-    LineLength = line_length(),
-    lists:reverse([format_usage_line(MaxOptionLength + 1, LineLength, UsageLine) || UsageLine <- UsageLines]).
+    MaxLineLength = line_length(),
+    lists:reverse([format_usage_line(MaxOptionLength + 1, MaxLineLength, UsageLine) || UsageLine <- UsageLines]).
 
 
 -spec add_option_spec_help_lines([option_spec()], PrevMaxOptionLength :: non_neg_integer(), [usage_line_with_length()]) ->
@@ -651,26 +674,26 @@ get_max_option_length({OptionText, HelpText}, PrevMaxOptionLength) ->
 %%                    [default: localhost]
 %%        -p, --port  Database server port [default: 1000]
 %%
--spec format_usage_line(MaxOptionLength :: non_neg_integer(), LineLength :: non_neg_integer(),
+-spec format_usage_line(MaxOptionLength :: non_neg_integer(), MaxLineLength :: non_neg_integer(),
                         usage_line_with_length()) -> iolist().
-format_usage_line(MaxOptionLength, LineLength, {OptionLength, OptionText, [_ | _] = HelpText})
-  when MaxOptionLength < (LineLength div 2) ->
+format_usage_line(MaxOptionLength, MaxLineLength, {OptionLength, OptionText, [_ | _] = HelpText})
+  when MaxOptionLength < (MaxLineLength div 2) ->
     %% If the width of the column where the options are shown is smaller than
     %% half the width of a console line then we show the help text line aligned
     %% next to its corresponding option, with a separation of at least 2
     %% characters.
-    [Head | Tail] = wrap_text_line(LineLength - MaxOptionLength - 3, HelpText),
+    [Head | Tail] = wrap_text_line(MaxLineLength - MaxOptionLength - 3, HelpText),
     FirstLineIndentation = lists:duplicate(MaxOptionLength - OptionLength + 1, $\s),
     Indentation = [$\n | lists:duplicate(MaxOptionLength + 3, $\s)],
     ["  ", OptionText, FirstLineIndentation, Head,
      [[Indentation, Line] || Line <- Tail], $\n];
-format_usage_line(_MaxOptionLength, LineLength, {_OptionLength, OptionText, [_ | _] = HelpText}) ->
+format_usage_line(_MaxOptionLength, MaxLineLength, {_OptionLength, OptionText, [_ | _] = HelpText}) ->
     %% If the width of the first column is bigger than the width of a console
     %% line, we show the help text on the next line with an indentation of 6
     %% characters.
-    HelpLines = wrap_text_line(LineLength - 6, HelpText),
+    HelpLines = wrap_text_line(MaxLineLength - 6, HelpText),
     ["  ", OptionText, [["\n      ", Line] || Line <- HelpLines], $\n];
-format_usage_line(_MaxOptionLength, _LineLength, {_OptionLength, OptionText, _HelpText}) ->
+format_usage_line(_MaxOptionLength, _MaxLineLength, {_OptionLength, OptionText, _HelpText}) ->
     ["  ", OptionText, $\n].
 
 
