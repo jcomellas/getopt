@@ -812,10 +812,8 @@ get_env_var(Prefix, Suffix, []) ->
 -spec line_length() -> non_neg_integer().
 line_length() ->
     case io:columns() of
-        {ok, Columns} when Columns >= ?LINE_LENGTH ->
-            Columns - 5;
-        {ok, Columns} ->
-            Columns;
+        {ok, Columns} when Columns < ?LINE_LENGTH ->
+            Columns - 1;
         _ ->
             ?LINE_LENGTH
     end.
