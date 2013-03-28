@@ -50,6 +50,7 @@ option_spec_list() ->
      {host,        $h,        "host",        {string, "localhost"}, "Database server host name or IP address"},
      {port,        $p,        "port",        {integer, 1000},       "Database server port"},
      {output_file, $o,        "output-file", string,                "File where the data will be saved to"},
+     {margin,      $m,        "margin",      {float, 0.66},         "Page margin"},
      {xml,         $x,        "xml",         undefined,             "Output data as XML"},
      {verbose,     $v,        "verbose",     integer,               "Verbosity level"},
      {dbname,      undefined, undefined,     string,                "Database name"}
