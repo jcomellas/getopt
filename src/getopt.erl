@@ -698,7 +698,7 @@ format_usage_line(_MaxOptionLength, _MaxLineLength, {_OptionLength, OptionText, 
 
 
 %% @doc Wrap a text line converting it into several text lines so that the
-%%      length of each one of them is never over HelpLength characters.
+%%      length of each one of them is never over Length characters.
 -spec wrap_text_line(Length :: non_neg_integer(), Text :: string()) -> [string()].
 wrap_text_line(Length, Text) ->
     wrap_text_line(Length, Text, [], 0, []).
@@ -730,7 +730,7 @@ default_arg_value_to_string(Value) when is_binary(Value) ->
 default_arg_value_to_string(Value) when is_integer(Value) ->
     integer_to_list(Value);
 default_arg_value_to_string(Value) when is_float(Value) ->
-    float_to_list(Value);
+    lists:flatten(io_lib:format("~w", [Value]));
 default_arg_value_to_string(Value) ->
     Value.
 
