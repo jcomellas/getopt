@@ -11,7 +11,8 @@
 -module(getopt).
 -author('juanjo@comellas.org').
 
--export([parse/2, usage/2, usage/3, usage/4, tokenize/1]).
+-export([parse/2, check/2, parse_and_check/2, format_error/2,
+         usage/2, usage/3, usage/4, tokenize/1]).
 -export([usage_cmd_line/2]).
 
 -define(LINE_LENGTH, 75).
@@ -57,9 +58,50 @@
 -export_type([arg_type/0, arg_value/0, arg_spec/0, simple_option/0, compound_option/0, option/0, option_spec/0]).
 
 
-%% @doc  Parse the command line options and arguments returning a list of tuples
-%%       and/or atoms using the Erlang convention for sending options to a
-%%       function.
+%% @doc Parse the command line options and arguments returning a list of tuples
+%%      and/or atoms using the Erlang convention for sending options to a
+%%      function.  Additionally perform check if all required options (the ones
+%%      without default values) are present.  The function is a combination of
+%%      two calls: parse/2 and check/2.
+-spec parse_and_check([option_spec()], string | [string()]) ->
+                {ok, {[option()], [string()]}} | {error, {Reason :: atom(), Data :: any()}}.
+parse_and_check(OptSpecList, CmdLine) when is_list(OptSpecList), is_list(CmdLine) ->
+    case parse(OptSpecList, CmdLine) of
+        {ok, {Opts, _}} = Result ->
+            case check(Opts, OptSpecList) of
+                ok ->
+                    Result;
+                Error ->
+                    Error
+            end;
+        Other ->
+            Other
+    end.
+
+%% @doc Check the parsed command line arguments returning ok if all required
+%%      options (i.e. that don't have defaults) are present, and returning
+%%      error otherwise.
+-spec check([option()], [option_spec()]) ->
+                ok | {error, {Reason :: atom(), Option :: atom()}}.
+check(ParsedOpts, OptSpecList) when is_list(ParsedOpts), is_list(OptSpecList) ->
+    try
+        Required = [N || {N, _, _, T, _} <- OptSpecList, not is_tuple(T) andalso T =/= undefined],
+        lists:foreach(fun(O) ->
+            case proplists:is_defined(O, ParsedOpts) of
+                true ->
+                    ok;
+                false ->
+                    throw({error, {missing_required_option, O}})
+            end
+        end, Required)
+    catch _:Error ->
+        Error
+    end.
+
+
+%% @doc Parse the command line options and arguments returning a list of tuples
+%%      and/or atoms using the Erlang convention for sending options to a
+%%      function.
 -spec parse([option_spec()], string() | [string()]) ->
                    {ok, {[option()], [string()]}} | {error, {Reason :: atom(), Data :: any()}}.
 parse(OptSpecList, CmdLine) when is_list(CmdLine) ->
@@ -100,6 +142,21 @@ parse(OptSpecList, OptAcc, ArgAcc, _ArgPos, []) ->
     %% not present but had default arguments in the specification.
     {ok, {lists:reverse(append_default_options(OptSpecList, OptAcc)), lists:reverse(ArgAcc)}}.
 
+%% @doc Format the error code returned by prior call to parse/2 or check/2.
+-spec format_error({error, {Reason :: atom(), Data :: any()}}, [option_spec()]) -> string().
+format_error({error, {Reason, Data}}, OptSpecList) ->
+    format_error({Reason, Data}, OptSpecList);
+format_error({missing_required_option, Name}, OptSpecList) ->
+    {_Name, Short, Long, _Type, _Help} = lists:keyfind(Name, 1, OptSpecList),
+    lists:flatten(["missing required option: -", [Short], " (", to_string(Long), ")"]);
+format_error({invalid_option, OptStr}, _OptSpecList) ->
+    "invalid option: " ++ to_string(OptStr);
+format_error({invalid_option_arg, {Name, Arg}}, _OptSpecList) ->
+    lists:flatten(["option \'", to_string(Name) ++ "\' has invalid argument: ", to_string(Arg)]);
+format_error({invalid_option_arg, OptStr}, _OptSpecList) ->
+    "invalid option argument: " ++ to_string(OptStr);
+format_error({Reason, Data}, _OptSpecList) ->
+    lists:append([to_string(Reason), " ", to_string(Data)]).
 
 %% @doc Parse a long option, add it to the option accumulator and continue
 %%      parsing the rest of the arguments recursively.
@@ -840,3 +897,16 @@ line_length() ->
         _ ->
             ?LINE_LENGTH
     end.
+
+-spec to_string(any()) -> string().
+to_string(L) when is_list(L) ->
+    case io_lib:printable_list(L) of
+        true -> L;
+        false -> io_lib:format("~p", [L])
+    end;
+to_string(A) when is_atom(A) ->
+    atom_to_list(A);
+to_string(T) ->
+    io_lib:format("~p", [T]).
+
+
