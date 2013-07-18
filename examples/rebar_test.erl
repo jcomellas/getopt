@@ -11,22 +11,36 @@
 -module(rebar_test).
 -author('juanjo@comellas.org').
 
--export([test/0, test/1, usage/0]).
+-export([test/0, test/1, test_required/0, test_check/0, usage/0]).
+
+test_required() ->
+    test2(fun getopt:parse_and_check/2, "-f").
+
+test_check() ->
+    test2(fun(O, L) ->
+        case getopt:parse(O, L) of
+            {ok, {Opts, _}} -> getopt:check(Opts, O);
+            Other           -> Other
+        end
+    end, "-f").
 
 test() ->
-    test("-f verbose=1 --quiet=on -j2 dummy1 dummy2").
+    test2(fun getopt:parse/2, "-f verbose=1 --quiet=on -j2 dummy1 dummy2").
 
 
 test(CmdLine) ->
+    test2(fun getopt:parse/2, CmdLine).
+
+test2(Fun, CmdLine) ->
     OptSpecList = option_spec_list(),
 
     io:format("For command line: ~p~n"
               "getopt:parse/2 returns:~n~n", [CmdLine]),
-    case getopt:parse(OptSpecList, CmdLine) of
+    case Fun(OptSpecList, CmdLine) of
         {ok, {Options, NonOptArgs}} ->
             io:format("Options:~n  ~p~n~nNon-option arguments:~n  ~p~n", [Options, NonOptArgs]);
-        {error, {Reason, Data}} ->
-            io:format("Error: ~s ~p~n~n", [Reason, Data]),
+        {error, {_Reason, _Data}} = Error ->
+            io:format("Error: ~s~n~n", [getopt:format_error(Error, OptSpecList)]),
             usage(OptSpecList)
     end.
 
@@ -45,6 +59,6 @@ option_spec_list() ->
      %% {Name,     ShortOpt,  LongOpt,       ArgSpec,               HelpMsg}
      {help,        $h,        "help",        undefined,             "Show the program options"},
      {jobs,        $j,        "jobs",        {integer, CpuCount},   "Number of concurrent jobs"},
-     {verbose,     $v,        "verbose",     {boolean, false},      "Be verbose about what gets done"},
+     {verbose,     $v,        "verbose",     boolean,               "Be verbose about what gets done"},
      {force,       $f,        "force",       {boolean, false},      "Force"}
     ].
