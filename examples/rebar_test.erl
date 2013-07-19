@@ -17,9 +17,9 @@ test_required() ->
     test2(fun getopt:parse_and_check/2, "-f").
 
 test_check() ->
-    test2(fun(O, L) ->
-        case getopt:parse(O, L) of
-            {ok, {Opts, _}} -> getopt:check(Opts, O);
+    test2(fun(OptSpecList, CmdLine) ->
+        case getopt:parse(OptSpecList, CmdLine) of
+            {ok, {Opts, _}} -> getopt:check(OptSpecList, Opts);
             Other           -> Other
         end
     end, "-f").
@@ -40,7 +40,7 @@ test2(Fun, CmdLine) ->
         {ok, {Options, NonOptArgs}} ->
             io:format("Options:~n  ~p~n~nNon-option arguments:~n  ~p~n", [Options, NonOptArgs]);
         {error, {_Reason, _Data}} = Error ->
-            io:format("Error: ~s~n~n", [getopt:format_error(Error, OptSpecList)]),
+            io:format("Error: ~s~n~n", [getopt:format_error(OptSpecList, Error)]),
             usage(OptSpecList)
     end.
 
