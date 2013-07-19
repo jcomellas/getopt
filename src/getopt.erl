@@ -142,21 +142,24 @@ parse(OptSpecList, OptAcc, ArgAcc, _ArgPos, []) ->
     %% not present but had default arguments in the specification.
     {ok, {lists:reverse(append_default_options(OptSpecList, OptAcc)), lists:reverse(ArgAcc)}}.
 
+
 %% @doc Format the error code returned by prior call to parse/2 or check/2.
--spec format_error({error, {Reason :: atom(), Data :: term()}}, [option_spec()]) -> string().
-format_error({error, {Reason, Data}}, OptSpecList) ->
-    format_error({Reason, Data}, OptSpecList);
-format_error({missing_required_option, Name}, OptSpecList) ->
+-spec format_error([option_spec()], {error, {Reason :: atom(), Data :: term()}} |
+                   {Reason :: term(), Data :: term()}) -> string().
+format_error(OptSpecList, {error, Reason}) ->
+    format_error(OptSpecList, Reason);
+format_error(OptSpecList, {missing_required_option, Name}) ->
     {_Name, Short, Long, _Type, _Help} = lists:keyfind(Name, 1, OptSpecList),
     lists:flatten(["missing required option: -", [Short], " (", to_string(Long), ")"]);
-format_error({invalid_option, OptStr}, _OptSpecList) ->
+format_error(_OptSpecList, {invalid_option, OptStr}) ->
     "invalid option: " ++ to_string(OptStr);
-format_error({invalid_option_arg, {Name, Arg}}, _OptSpecList) ->
+format_error(_OptSpecList, {invalid_option_arg, {Name, Arg}}) ->
     lists:flatten(["option \'", to_string(Name) ++ "\' has invalid argument: ", to_string(Arg)]);
-format_error({invalid_option_arg, OptStr}, _OptSpecList) ->
+format_error(_OptSpecList, {invalid_option_arg, OptStr}) ->
     "invalid option argument: " ++ to_string(OptStr);
-format_error({Reason, Data}, _OptSpecList) ->
+format_error(_OptSpecList, {Reason, Data}) ->
     lists:append([to_string(Reason), " ", to_string(Data)]).
+
 
 %% @doc Parse a long option, add it to the option accumulator and continue
 %%      parsing the rest of the arguments recursively.

@@ -292,10 +292,13 @@ check_test_() ->
     {ok, {Opts, _}} = parse(OptSpecList, ""),
     [
      {"Check required options",
-      ?_assertEqual({error, {missing_required_option, arg}}, check(Opts, OptSpecList))},
+      ?_assertEqual({error, {missing_required_option, arg}}, check(OptSpecList, Opts))},
      {"Parse arguments and check required options",
       ?_assertEqual({error, {missing_required_option, arg}}, parse_and_check(OptSpecList, ""))},
-     {"Format error test",
+     {"Format error test 1",
       ?_assertEqual("missing required option: -a (arg)",
-          format_error({missing_required_option, arg}, OptSpecList))}
+                    format_error(OptSpecList, {error, {missing_required_option, arg}}))},
+     {"Format error test 2",
+      ?_assertEqual("missing required option: -a (arg)",
+                    format_error(OptSpecList, {missing_required_option, arg}))}
     ].
