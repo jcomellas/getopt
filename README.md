@@ -8,7 +8,7 @@ Requirements
 ------------
 
 You should only need a somewhat recent version of Erlang/OTP. The module has
-been tested with Erlang R13B, R14B and R15B.
+been tested with Erlang R13B, R14B, R15B and R16B.
 
 You also need a recent version of [rebar](http://github.com/basho/rebar) in
 the system path. If you're going to run the unit tests you need the latest
@@ -32,7 +32,7 @@ To build the (very) limited documentation run ``make doc``.
 After the module is compiled with ``make``, insert getopt into the Erlang lib directory (e.g. by soft link or copying).
 
 ```sh
-ln -s . /usr/local/lib/erlang/lib/getopt-0.7.1
+ln -s . /usr/local/lib/erlang/lib/getopt-0.8.1
 ```
 
 
