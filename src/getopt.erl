@@ -152,13 +152,13 @@ format_error(OptSpecList, {missing_required_option, Name}) ->
     {_Name, Short, Long, _Type, _Help} = lists:keyfind(Name, 1, OptSpecList),
     lists:flatten(["missing required option: -", [Short], " (", to_string(Long), ")"]);
 format_error(_OptSpecList, {invalid_option, OptStr}) ->
-    "invalid option: " ++ to_string(OptStr);
+    lists:flatten(["invalid option: ", to_string(OptStr)]);
 format_error(_OptSpecList, {invalid_option_arg, {Name, Arg}}) ->
     lists:flatten(["option \'", to_string(Name) ++ "\' has invalid argument: ", to_string(Arg)]);
 format_error(_OptSpecList, {invalid_option_arg, OptStr}) ->
-    "invalid option argument: " ++ to_string(OptStr);
+    lists:flatten(["invalid option argument: ", to_string(OptStr)]);
 format_error(_OptSpecList, {Reason, Data}) ->
-    lists:append([to_string(Reason), " ", to_string(Data)]).
+    lists:flatten([to_string(Reason), " ", to_string(Data)]).
 
 
 %% @doc Parse a long option, add it to the option accumulator and continue
