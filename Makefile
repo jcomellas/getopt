@@ -28,5 +28,5 @@ doc:
 
 test:
 	@erl -make
-	@$(ERL) -sname $(APPLICATION) $(EPATH) -s getopt_test test -s init stop
+	@$(ERL) -sname $(APPLICATION) $(EPATH) -noinput -s getopt_test test -s init stop
 
