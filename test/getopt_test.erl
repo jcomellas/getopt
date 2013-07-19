@@ -13,7 +13,7 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
--import(getopt, [parse/2, tokenize/1]).
+-import(getopt, [parse/2, check/2, parse_and_check/2, format_error/2, tokenize/1]).
 
 -define(NAME(Opt), element(1, Opt)).
 -define(SHORT(Opt), element(2, Opt)).
@@ -282,4 +282,20 @@ tokenize_test_() ->
      {"Tokenize",
       ?_assertEqual(["ABC","abc","1234","5678","DEFGHI","\"JKL \"", "$PATH"],
                     tokenize("  ABC abc '1234' \"5678\" 'DEF'\"GHI\" '\"JKL \"'  \\$PATH"))}
+    ].
+
+check_test_() ->
+    OptSpecList =
+        [
+         {arg,        $a,        "arg",        string,   "Required arg"}
+        ],
+    {ok, {Opts, _}} = parse(OptSpecList, ""),
+    [
+     {"Check required options",
+      ?_assertEqual({error, {missing_required_option, arg}}, check(Opts, OptSpecList))},
+     {"Parse arguments and check required options",
+      ?_assertEqual({error, {missing_required_option, arg}}, parse_and_check(OptSpecList, ""))},
+     {"Format error test",
+      ?_assertEqual("missing required option: -a (arg)",
+          format_error({missing_required_option, arg}, OptSpecList))}
     ].
