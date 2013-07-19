@@ -3,12 +3,11 @@ APPLICATION := getopt
 REBAR=$(shell which rebar || echo ./rebar)
 ERL := erl
 EPATH := -pa ebin
-TEST_EPATH := -pa .eunit
 
 DIALYZER=dialyzer
 DIALYZER_OPTS=-Wno_return -Wrace_conditions -Wunderspecs -Wno_undefined_callbacks --fullpath
 
-.PHONY: all clean compile console dialyze doc test test-console
+.PHONY: all clean compile console dialyze doc test
 
 all: compile
 
@@ -28,8 +27,6 @@ doc:
 	@$(REBAR) doc
 
 test:
-	@$(REBAR) eunit
-
-test-console:
-	$(ERL) -sname $(APPLICATION)_test $(TEST_EPATH)
+	@erl -make
+	@$(ERL) -sname $(APPLICATION) $(EPATH) -s getopt_test test -s init stop
 
