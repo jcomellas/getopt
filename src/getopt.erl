@@ -63,39 +63,39 @@
 %%      function.  Additionally perform check if all required options (the ones
 %%      without default values) are present.  The function is a combination of
 %%      two calls: parse/2 and check/2.
--spec parse_and_check([option_spec()], string | [string()]) ->
-                {ok, {[option()], [string()]}} | {error, {Reason :: atom(), Data :: any()}}.
+-spec parse_and_check([option_spec()], string() | [string()]) ->
+                {ok, {[option()], [string()]}} | {error, {Reason :: atom(), Data :: term()}}.
 parse_and_check(OptSpecList, CmdLine) when is_list(OptSpecList), is_list(CmdLine) ->
     case parse(OptSpecList, CmdLine) of
         {ok, {Opts, _}} = Result ->
-            case check(Opts, OptSpecList) of
-                ok ->
-                    Result;
-                Error ->
-                    Error
+            case check(OptSpecList, Opts) of
+                ok    -> Result;
+                Error -> Error
             end;
-        Other ->
-            Other
+        Error ->
+            Error
     end.
 
 %% @doc Check the parsed command line arguments returning ok if all required
 %%      options (i.e. that don't have defaults) are present, and returning
 %%      error otherwise.
--spec check([option()], [option_spec()]) ->
+-spec check([option_spec()], [option()]) ->
                 ok | {error, {Reason :: atom(), Option :: atom()}}.
-check(ParsedOpts, OptSpecList) when is_list(ParsedOpts), is_list(OptSpecList) ->
+check(OptSpecList, ParsedOpts) when is_list(OptSpecList), is_list(ParsedOpts) ->
     try
-        Required = [N || {N, _, _, T, _} <- OptSpecList, not is_tuple(T) andalso T =/= undefined],
-        lists:foreach(fun(O) ->
-            case proplists:is_defined(O, ParsedOpts) of
+        RequiredOpts = [Name || {Name, _, _, Arg, _} <- OptSpecList,
+                                not is_tuple(Arg) andalso Arg =/= undefined],
+        lists:foreach(fun (Option) ->
+            case proplists:is_defined(Option, ParsedOpts) of
                 true ->
                     ok;
                 false ->
-                    throw({error, {missing_required_option, O}})
+                    throw({error, {missing_required_option, Option}})
             end
-        end, Required)
-    catch _:Error ->
-        Error
+        end, RequiredOpts)
+    catch
+        _:Error ->
+            Error
     end.
 
 
@@ -103,7 +103,7 @@ check(ParsedOpts, OptSpecList) when is_list(ParsedOpts), is_list(OptSpecList) ->
 %%      and/or atoms using the Erlang convention for sending options to a
 %%      function.
 -spec parse([option_spec()], string() | [string()]) ->
-                   {ok, {[option()], [string()]}} | {error, {Reason :: atom(), Data :: any()}}.
+                   {ok, {[option()], [string()]}} | {error, {Reason :: atom(), Data :: term()}}.
 parse(OptSpecList, CmdLine) when is_list(CmdLine) ->
     try
         Args = if
@@ -143,7 +143,7 @@ parse(OptSpecList, OptAcc, ArgAcc, _ArgPos, []) ->
     {ok, {lists:reverse(append_default_options(OptSpecList, OptAcc)), lists:reverse(ArgAcc)}}.
 
 %% @doc Format the error code returned by prior call to parse/2 or check/2.
--spec format_error({error, {Reason :: atom(), Data :: any()}}, [option_spec()]) -> string().
+-spec format_error({error, {Reason :: atom(), Data :: term()}}, [option_spec()]) -> string().
 format_error({error, {Reason, Data}}, OptSpecList) ->
     format_error({Reason, Data}, OptSpecList);
 format_error({missing_required_option, Name}, OptSpecList) ->
@@ -898,15 +898,14 @@ line_length() ->
             ?LINE_LENGTH
     end.
 
--spec to_string(any()) -> string().
-to_string(L) when is_list(L) ->
-    case io_lib:printable_list(L) of
-        true -> L;
-        false -> io_lib:format("~p", [L])
+
+-spec to_string(term()) -> string().
+to_string(List) when is_list(List) ->
+    case io_lib:printable_list(List) of
+        true  -> List;
+        false -> io_lib:format("~p", [List])
     end;
-to_string(A) when is_atom(A) ->
-    atom_to_list(A);
-to_string(T) ->
-    io_lib:format("~p", [T]).
-
-
+to_string(Atom) when is_atom(Atom) ->
+    atom_to_list(Atom);
+to_string(Value) ->
+    io_lib:format("~p", [Value]).
