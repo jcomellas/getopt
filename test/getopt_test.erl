@@ -295,10 +295,19 @@ check_test_() ->
       ?_assertEqual({error, {missing_required_option, arg}}, check(OptSpecList, Opts))},
      {"Parse arguments and check required options",
       ?_assertEqual({error, {missing_required_option, arg}}, parse_and_check(OptSpecList, ""))},
-     {"Format error test 1",
+     {"Format missing option error test 1",
       ?_assertEqual("missing required option: -a (arg)",
                     format_error(OptSpecList, {error, {missing_required_option, arg}}))},
-     {"Format error test 2",
+     {"Format missing option error test 2",
       ?_assertEqual("missing required option: -a (arg)",
-                    format_error(OptSpecList, {missing_required_option, arg}))}
+                    format_error(OptSpecList, {missing_required_option, arg}))},
+     {"Format invalid option error test 1",
+      ?_assertEqual("invalid option: --verbose",
+                    format_error(OptSpecList, {error, {invalid_option, "--verbose"}}))},
+     {"Format invalid option argument error test 1",
+      ?_assertEqual("invalid option argument: arg_value",
+                    format_error(OptSpecList, {error, {invalid_option_arg, "arg_value"}}))},
+     {"Format invalid option argument error test 2",
+      ?_assertEqual("option 'verbose' has invalid argument: 100",
+                    format_error(OptSpecList, {error, {invalid_option_arg, {verbose, "100"}}}))}
     ].
