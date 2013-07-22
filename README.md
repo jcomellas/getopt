@@ -32,7 +32,7 @@ To build the (very) limited documentation run ``make doc``.
 After the module is compiled with ``make``, insert getopt into the Erlang lib directory (e.g. by soft link or copying).
 
 ```sh
-ln -s . /usr/local/lib/erlang/lib/getopt-0.8.1
+ln -s . /usr/local/lib/erlang/lib/getopt-0.8.2
 ```
 
 
