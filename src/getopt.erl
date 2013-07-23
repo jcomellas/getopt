@@ -11,7 +11,9 @@
 -module(getopt).
 -author('juanjo@comellas.org').
 
--export([parse/2, check/2, parse_and_check/2, format_error/2,
+-export([parse/2, check/2, check/3,
+         parse_and_check/2, parse_and_check/3,
+         format_error/2,
          usage/2, usage/3, usage/4, tokenize/1]).
 -export([usage_cmd_line/2]).
 
@@ -39,6 +41,10 @@
 -type simple_option()                           :: atom().
 -type compound_option()                         :: {atom(), arg_value()}.
 -type option()                                  :: simple_option() | compound_option().
+%% Option types for configuration option checking.
+-type check_option() :: help | {skip, [Name::atom()]}.
+-type check_options() :: [ check_option() ].
+
 %% Command line option specification.
 -type option_spec() :: {
                    Name                         :: atom(),
@@ -66,14 +72,28 @@
 -spec parse_and_check([option_spec()], string() | [string()]) ->
                 {ok, {[option()], [string()]}} | {error, {Reason :: atom(), Data :: term()}}.
 parse_and_check(OptSpecList, CmdLine) when is_list(OptSpecList), is_list(CmdLine) ->
+    parse_and_check(OptSpecList, CmdLine, []).
+
+%% @doc Parse the command line options and arguments returning a list of tuples
+%%      and/or atoms using the Erlang convention for sending options to a
+%%      function.  Additionally perform check if all required options (the ones
+%%      without default values) are present.  The function is a combination of
+%%      two calls: parse/2 and check/2.  The `CheckOpts' argument allows to specify
+%%      a list of options to exclude from the required check (via `{skip, [Name::atom()]}')
+%%      and to specify `help', which will ignore required options check if
+%%      `CmdLine' contains help switch and `help' option is present in the `OptSpecList'.
+-spec parse_and_check([option_spec()], string() | [string()], check_options()) ->
+                {ok, {[option()], [string()]}} | help | {error, {Reason :: atom(), Data :: term()}}.
+parse_and_check(OptSpecList, CmdLine, CheckOpts)
+        when is_list(OptSpecList), is_list(CmdLine), is_list(CheckOpts) ->
     case parse(OptSpecList, CmdLine) of
         {ok, {Opts, _}} = Result ->
-            case check(OptSpecList, Opts) of
+            case check(OptSpecList, Opts, CheckOpts) of
                 ok    -> Result;
-                Error -> Error
+                Other -> Other
             end;
-        Error ->
-            Error
+        Other ->
+            Other
     end.
 
 %% @doc Check the parsed command line arguments returning ok if all required
@@ -82,9 +102,32 @@ parse_and_check(OptSpecList, CmdLine) when is_list(OptSpecList), is_list(CmdLine
 -spec check([option_spec()], [option()]) ->
                 ok | {error, {Reason :: atom(), Option :: atom()}}.
 check(OptSpecList, ParsedOpts) when is_list(OptSpecList), is_list(ParsedOpts) ->
+    check(OptSpecList, ParsedOpts, []).
+
+%% @doc Check the parsed command line arguments returning ok if all required
+%%      options (i.e. that don't have defaults) are present, and returning
+%%      error otherwise. The `CheckOpts' argument allows to specify
+%%      a list of options to exclude from the required check (via `{skip, [Name::atom()]}')
+%%      and to specify `help', which will ignore required options check if
+%%      `CmdLine' contains help switch and `help' option is present in the `OptSpecList'.
+
+-spec check([option_spec()], [option()], check_options()) ->
+                ok | help | {error, {Reason :: atom(), Option :: atom()}}.
+check(OptSpecList, ParsedOpts, CheckOpts)
+        when is_list(OptSpecList), is_list(ParsedOpts), is_list(CheckOpts) ->
     try
+        CheckHelp = proplists:get_value(help, CheckOpts, false),
+        HasHelp   = lists:keymember(help, 1, OptSpecList)
+                    andalso proplists:get_value(help, ParsedOpts, false),
+        SkipOpts  = proplists:get_value(skip, CheckOpts, []),
+
+        {CheckHelp, HasHelp} =:= {true, true}
+            andalso throw(help),
+
+        % Ignore checking of options present in the {skip, Skip} list
         RequiredOpts = [Name || {Name, _, _, Arg, _} <- OptSpecList,
-                                not is_tuple(Arg) andalso Arg =/= undefined],
+                                not is_tuple(Arg), Arg =/= undefined,
+                                not lists:member(Name, SkipOpts)],
         lists:foreach(fun (Option) ->
             case proplists:is_defined(Option, ParsedOpts) of
                 true ->
@@ -94,6 +137,8 @@ check(OptSpecList, ParsedOpts) when is_list(OptSpecList), is_list(ParsedOpts) ->
             end
         end, RequiredOpts)
     catch
+        throw:help ->
+            help;
         _:Error ->
             Error
     end.
@@ -151,12 +196,20 @@ format_error(OptSpecList, {error, Reason}) ->
 format_error(OptSpecList, {missing_required_option, Name}) ->
     {_Name, Short, Long, _Type, _Help} = lists:keyfind(Name, 1, OptSpecList),
     lists:flatten(["missing required option: -", [Short], " (", to_string(Long), ")"]);
-format_error(_OptSpecList, {invalid_option, OptStr}) ->
-    lists:flatten(["invalid option: ", to_string(OptStr)]);
-format_error(_OptSpecList, {invalid_option_arg, {Name, Arg}}) ->
-    lists:flatten(["option \'", to_string(Name) ++ "\' has invalid argument: ", to_string(Arg)]);
+format_error(OptSpecList, {missing_option_arg, Name}) ->
+    Opt = lists:keyfind(Name, 1, OptSpecList),
+    lists:flatten(["missing required option argument: -", [element(2,Opt)], " (",
+        to_string(Name), ")"]);
+format_error(OptSpecList, {invalid_option_arg, {Name, Arg}}) ->
+    L = case lists:keyfind(Name, 1, OptSpecList) of
+        {_, Short, undefined, _, _}  -> [$-, Short, $ , to_string(Arg)];
+        {_, _, Long, _, _}           -> ["--", Long, $=, to_string(Arg)]
+    end,
+    lists:flatten(["option \'", to_string(Name) ++ "\' has invalid argument: ", L]);
 format_error(_OptSpecList, {invalid_option_arg, OptStr}) ->
     lists:flatten(["invalid option argument: ", to_string(OptStr)]);
+format_error(_OptSpecList, {invalid_option, OptStr}) ->
+    lists:flatten(["invalid option: ", to_string(OptStr)]);
 format_error(_OptSpecList, {Reason, Data}) ->
     lists:flatten([to_string(Reason), " ", to_string(Data)]).
 

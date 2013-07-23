@@ -13,7 +13,7 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
--import(getopt, [parse/2, check/2, parse_and_check/2, format_error/2, tokenize/1]).
+-import(getopt, [parse/2, check/2, check/3, parse_and_check/3, parse_and_check/2, format_error/2, tokenize/1]).
 
 -define(NAME(Opt), element(1, Opt)).
 -define(SHORT(Opt), element(2, Opt)).
@@ -294,11 +294,95 @@ check_test_() ->
      {"Check required options",
       ?_assertEqual({error, {missing_required_option, arg}}, check(OptSpecList, Opts))},
      {"Parse arguments and check required options",
-      ?_assertEqual({error, {missing_required_option, arg}}, parse_and_check(OptSpecList, ""))},
-     {"Format error test 1",
-      ?_assertEqual("missing required option: -a (arg)",
-                    format_error(OptSpecList, {error, {missing_required_option, arg}}))},
-     {"Format error test 2",
-      ?_assertEqual("missing required option: -a (arg)",
-                    format_error(OptSpecList, {missing_required_option, arg}))}
+      ?_assertEqual({error, {missing_required_option, arg}}, parse_and_check(OptSpecList, ""))}
     ].
+
+format_error_test_() ->
+    Opts = [
+         {help, $h, "help", undefined, "Help string"}
+        ,{arg,  $a, "arg",  string,    "Required arg"}
+        ,{xx,   $x, "xx",   integer,   "Required int"}
+        ,{long, undefined, "long", undefined, "Long undefined"}
+    ],
+    [
+     {"Format error - missing_required_option arg test1",
+      ?_assertEqual("missing required option: -a (arg)",
+                    format_error(Opts, {error, {missing_required_option, arg}}))},
+     {"Format error - missing_required_option arg test2",
+      ?_assertEqual("missing required option: -a (arg)",
+                    format_error(Opts, {missing_required_option, arg}))},
+     {"Format error - missing_required_option arg test3",
+      ?_assertEqual("missing required option: -a (arg)",
+                    format_error(Opts, parse_and_check(Opts, "")))},
+     {"Format error - missing_option_arg test4",
+      ?_assertEqual("missing required option argument: -a (arg)",
+                    format_error(Opts, parse_and_check(Opts, "-a")))},
+     {"Format error - missing_option_arg test5",
+      ?_assertEqual("option 'xx' has invalid argument: --xx=bc",
+                    format_error(Opts, parse_and_check(Opts, "--xx=bc -a")))},
+     {"Format error - invalid_option_arg test6",
+      ?_assertEqual("invalid option argument: --long=abc",
+                    format_error(Opts, parse_and_check(Opts, "--long=abc --zz")))},
+     {"Format error - invalid_option test7",
+      ?_assertEqual("invalid option: -z",
+                    format_error(Opts, parse_and_check(Opts, "--arg=abc -z")))},
+     {"Format error - invalid_option test8",
+      ?_assertEqual("invalid option: --zz",
+                    format_error(Opts, parse_and_check(Opts, "--arg=abc --zz")))}
+
+    ].
+
+check_help_test_() ->
+    OptSpecList1 = [{arg,  $a, "arg",  string,    "Required arg"}],
+    OptSpecList2 = [{help, $h, "help", undefined, "Help string"} | OptSpecList1],
+
+    {ok, {Opts1, _}} = parse(OptSpecList1, ""),
+    {ok, {Opts2, _}} = parse(OptSpecList2, "-h"),
+
+    [
+     {"Check required arg without -h with no help checking",
+         ?_assertEqual({error, {missing_required_option, arg}}, check(OptSpecList1, Opts1))},
+     {"Check required arg with -h with no help checking",
+         ?_assertEqual({error, {missing_required_option, arg}}, check(OptSpecList2, Opts1))},
+     {"Check required arg without -h with no help checking",
+         ?_assertEqual({error, {missing_required_option, arg}}, check(OptSpecList1, Opts2))},
+     {"Check required arg with -h with no help checking",
+         ?_assertEqual({error, {missing_required_option, arg}}, check(OptSpecList2, Opts2))},
+     {"Check required arg without -h with help checking",
+         ?_assertEqual({error, {missing_required_option, arg}}, check(OptSpecList1, Opts1, [help]))},
+     {"Check required arg with -h with help checking",
+         ?_assertEqual({error, {missing_required_option, arg}}, check(OptSpecList2, Opts1, [help]))},
+     {"Check required arg without -h with help checking",
+         ?_assertEqual({error, {missing_required_option, arg}}, check(OptSpecList1, Opts2, [help]))},
+     {"Check required arg with -h with help checking",
+         ?_assertEqual(help, check(OptSpecList2, Opts2, [help]))},
+
+     {"Skip required arg check",
+         ?_assertEqual(ok, check(OptSpecList1, Opts1, [{skip, [arg]}]))},
+     {"Check required arg with -h with help checking",
+         ?_assertEqual(help, check(OptSpecList2, Opts2, [help, {skip, [arg]}]))},
+     
+     {"Parse and check required arg without -h with no help checking",
+         ?_assertEqual({error, {missing_required_option, arg}}, parse_and_check(OptSpecList1, []))},
+     {"Parse and check required arg with -h with no help checking",
+         ?_assertEqual({error, {missing_required_option, arg}}, parse_and_check(OptSpecList2, []))},
+     {"Parse and check required arg without -h with no help checking",
+         ?_assertEqual({error, {invalid_option, "-h"}}, parse_and_check(OptSpecList1, "-h"))},
+     {"Parse and check required arg with -h with no help checking",
+         ?_assertEqual({error, {missing_required_option, arg}}, parse_and_check(OptSpecList2, "-h"))},
+     {"Parse and check required arg without -h with help checking",
+         ?_assertEqual({error, {missing_required_option, arg}}, parse_and_check(OptSpecList1, [], [help]))},
+     {"Parse and check required arg with -h with help checking",
+         ?_assertEqual({error, {missing_required_option, arg}}, parse_and_check(OptSpecList2, [], [help]))},
+     {"Parse and check required arg without -h with help checking",
+         ?_assertEqual({error, {invalid_option, "-h"}}, parse_and_check(OptSpecList1, "-h", [help]))},
+     {"Parse and check required arg with -h with help checking",
+         ?_assertEqual(help, parse_and_check(OptSpecList2, "-h", [help]))},
+
+     {"Skip required arg parse and check",
+         ?_assertEqual({ok, {[],[]}}, parse_and_check(OptSpecList1, [], [{skip, [arg]}]))},
+     {"Check required arg parse and check with -h with help checking",
+         ?_assertEqual(help, parse_and_check(OptSpecList2, "-h", [help, {skip, [arg]}]))}
+    ].
+      
+    

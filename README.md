@@ -488,3 +488,42 @@ Will return:
 ``` erlang
 {ok,{[{path,"/john's files"}],["dummy"]}}
 ```
+
+Checking required options
+=========================
+
+There are four functions available for checking required options:
+``` erlang
+getopt:check/2, getopt:check/3,
+getopt:parse_and_check/2, getopt:parse_and_check/3
+```
+If there are any options in the specification whose option types are not
+tuples and not ``undefined``, these functions will return ``{error, Reason}``
+so that the caller can output the program usage by calling ``getopt:usage/2``
+
+These functions accept an optional ``CheckOpt`` argument that controls their
+behavior:
+
+``` erlang
+CheckOpts = [help | {skip, [Name::atom()]}]
+
+    help - instructs getopt:check/3 to return 'help'
+           when "-h" command line option is given and
+           option specification contains definition of 'help'.
+           This is needed to short-circuit the checker of
+           required options when help is requested.
+
+    {skip, [Name]} - tells the checker to skip checking listed options
+```
+Example:
+
+``` erlang
+Spec = 
+    [{help,$h,"help",undefined,"Help string"}
+    ,{port,$p,"port",integer,  "Server port"}],
+
+{error,{missing_required_option,port}} = 
+    getopt:parse_and_check(Spec, "-h").
+
+help = getopt:parse_and_check(Spec, "-h", [help]).
+```
