@@ -10,7 +10,7 @@ Requirements
 You should only need a somewhat recent version of Erlang/OTP. The module has
 been tested with Erlang R13B, R14B, R15B and R16B.
 
-You also need a recent version of [rebar](http://github.com/basho/rebar) in
+You also need a recent version of [rebar](http://github.com/rebar/rebar) in
 the system path. If you're going to run the unit tests you need the latest
 version of rebar to make sure that the latest version of *getopt* is being
 used. rebar already includes a compiled copy of the ``getopt`` module in its
