@@ -535,8 +535,8 @@ usage(OptSpecList, ProgramName) ->
 %%       arguments that are supported by the program.
 -spec usage([option_spec()], string(), output_stream() | string()) -> ok.
 usage(OptSpecList, ProgramName, OutputStream) when is_atom(OutputStream) ->
-    io:format(OutputStream, "~s~n~n~s~n",
-              [usage_cmd_line(ProgramName, OptSpecList), usage_options(OptSpecList)]);
+    io:format(OutputStream, "~ts~n~n~ts~n",
+              [unicode:characters_to_list(usage_cmd_line(ProgramName, OptSpecList)), unicode:characters_to_list(usage_options(OptSpecList))]);
 %% @doc  Show a message on standard_error indicating the command line options and
 %%       arguments that are supported by the program. The CmdLineTail argument
 %%       is a string that is added to the end of the usage command line.
@@ -549,8 +549,8 @@ usage(OptSpecList, ProgramName, CmdLineTail) ->
 %%       is a string that is added to the end of the usage command line.
 -spec usage([option_spec()], ProgramName :: string(), CmdLineTail :: string(), output_stream() | [{string(), string()}]) -> ok.
 usage(OptSpecList, ProgramName, CmdLineTail, OutputStream) when is_atom(OutputStream) ->
-    io:format(OutputStream, "~s~n~n~s~n",
-              [usage_cmd_line(ProgramName, OptSpecList, CmdLineTail), usage_options(OptSpecList)]);
+    io:format(OutputStream, "~ts~n~n~ts~n",
+              [unicode:characters_to_list(usage_cmd_line(ProgramName, OptSpecList, CmdLineTail)), unicode:characters_to_list(usage_options(OptSpecList))]);
 %% @doc  Show a message on standard_error indicating the command line options and
 %%       arguments that are supported by the program. The CmdLineTail and OptionsTail
 %%       arguments are a string that is added to the end of the usage command line
@@ -566,8 +566,8 @@ usage(OptSpecList, ProgramName, CmdLineTail, OptionsTail) ->
 -spec usage([option_spec()], ProgramName :: string(), CmdLineTail :: string(),
             [{OptionName :: string(), Help :: string()}], output_stream()) -> ok.
 usage(OptSpecList, ProgramName, CmdLineTail, OptionsTail, OutputStream) ->
-    io:format(OutputStream, "~s~n~n~s~n",
-              [usage_cmd_line(ProgramName, OptSpecList, CmdLineTail), usage_options(OptSpecList, OptionsTail)]).
+    io:format(OutputStream, "~ts~n~n~ts~n",
+              [unicode:characters_to_list(usage_cmd_line(ProgramName, OptSpecList, CmdLineTail)), unicode:characters_to_list(usage_options(OptSpecList, OptionsTail))]).
 
 
 -spec usage_cmd_line(ProgramName :: string(), [option_spec()]) -> iolist().
