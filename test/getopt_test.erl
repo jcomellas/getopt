@@ -331,25 +331,27 @@ format_error_test_() ->
 
     ].
 
--record(test_rec, {a, b, c}).
+-record(test_rec, {a, b, c, e}).
 
 check_to_record_test_() ->
-    Options = [{d, to_be_ignored}, {a, 10}, {b, test}, {c, "abc"}],
-    Fun     = fun(d, _Value) -> ignore;
-                 (b, _Value) -> {ok, replaced};
-                 (_,  Value) -> {ok, Value}
+    Options = [{d, to_be_ignored}, {a, 10}, {b, test}, {c, "abc"}, {e,1}, {e,2}],
+    Options2= [{a,10}, {b,test}, {c,"abc"}, {e,1}, {e,2}],
+    Fun     = fun(d, _Old, _Value) -> ignore;
+                 (b, _Old, _Value) -> {ok, replaced};
+                 (e,  Old,  Value) -> {ok, [Value | Old]};
+                 (_, _Old,  Value) -> {ok, Value}
               end,
     Fields  = record_info(fields, test_rec),
     [
       {"Check to_record conversion - throw without validation",
-       ?_assertException(throw, {field_not_found, d, [a,b,c]},
+       ?_assertException(throw, {field_not_found, d, [a,b,c,e]},
                      getopt:to_record(Options, Fields, #test_rec{}))},
       {"Check to_record conversion without validation",
-       ?_assertEqual(#test_rec{a=10, b=test,     c="abc"},
-                     getopt:to_record([{a,10},{b,test},{c,"abc"}], Fields, #test_rec{}))},
+       ?_assertEqual(#test_rec{a=10, b=test,     c="abc", e=2},
+                     getopt:to_record(Options2, Fields, #test_rec{}))},
       {"Check to_record conversion with validation",
-       ?_assertEqual(#test_rec{a=10, b=replaced, c="abc"},
-                     getopt:to_record(Options, Fields, #test_rec{}, Fun))}
+       ?_assertEqual(#test_rec{a=10, b=replaced, c="abc", e=[2,1]},
+                     getopt:to_record(Options, Fields, #test_rec{e=[]}, Fun))}
     ].
 
 check_help_test_() ->

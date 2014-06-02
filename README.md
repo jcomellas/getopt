@@ -556,15 +556,16 @@ Args = #args{host = "localhost", port = 8000, verbose = 1}.
 
 It is also possible to pass a custom validation function to ``getopt:to_record/4``.
 That function allows to translate the values assigned to the record's fields, as
-well as to ignore some options:
+well as to ignore some options. The arguments to the function are:
+``(OptionName::atom(), OldFieldValue, ArgumentValue) -> {ok, FieldValue} | ignore``.
 
 ```erlang
 -record(args2, {host, port}).
 
-Fun = fun(verbose, _) -> ignore;
-         (port,    N) when N < 1024 -> throw({invalid_port, N});
-         (port,    N) -> {ok, N+1};
-         (_,   Value) -> {ok, Value}
+Fun = fun(verbose,  _Old, _) -> ignore;
+         (port,     _Old, N) when N < 1024 -> throw({invalid_port, N});
+         (port,     _Old, N) -> {ok, N+1};
+         (_Opt, _Old, Value) -> {ok, Value}
       end,
 
 Args2 = getopt:to_record(ParsedArgs, record_info(fields, args2), #args2{}, Fun),

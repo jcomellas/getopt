@@ -193,25 +193,30 @@ parse(OptSpecList, OptAcc, ArgAcc, _ArgPos, []) ->
 %%      `Record' is the initial value of the record to be populated with option values.
 -spec to_record([option()], [atom()], tuple()) -> tuple().
 to_record(Options, FieldNames, Record) ->
-    to_record(Options, FieldNames, Record, fun(_,V) -> {ok, V} end).
+    to_record(Options, FieldNames, Record, fun(_,_,V) -> {ok, V} end).
 
 %% @doc Convert options from a list into a record.
-%%      This function is equivalent to `opts_to_record/3' except for taking another `Validate'
-%%      argument, which is a function `(Field, Value) -> {ok, NewValue} | ignore' used for
-%%      validating the `Field' before it's assigned to the corresponding field in the `Record'.
+%%      This function is equivalent to `opts_to_record/3' except for taking another
+%%      `Validate' argument, which is a function
+%%      `(Field, OldFieldValue, OptionValue) -> {ok, NewFieldValue} | ignore'
+%%      used for validating the `Field' before it's assigned to the corresponding field
+%%      in the `Record'.
 -spec to_record([option()], [atom()], tuple(),
-        fun((atom(), term()) -> {ok, term()} | ignore)) -> tuple().
-to_record(Options, RecordFieldNames, Record, Validate) when is_function(Validate, 2) ->
+        fun((atom(), term(), term()) -> {ok, term()} | ignore)) -> tuple().
+to_record(Options, RecordFieldNames, Record, Validate) when is_function(Validate, 3) ->
     lists:foldl(fun({Opt, Value}, Rec) ->
         I = pos(RecordFieldNames, Opt, 2),
-        case Validate(Opt, Value) of
+        case Validate(Opt, old_val(I, Rec), Value) of
             {ok, V} when I > 1 -> setelement(I, Rec, V);
             {ok, _}            -> throw({field_not_found, Opt, RecordFieldNames});
             ignore             -> Rec
         end
     end, Record, Options).
 
-pos([],    _, _) -> 1;
+old_val(0, Rec) -> undefined;
+old_val(N, Rec) -> element(N, Rec).
+
+pos([],    _, _) -> 0;
 pos([H|_], H, N) -> N;
 pos([_|T], H, N) -> pos(T, H, N+1).
 
