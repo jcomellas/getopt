@@ -13,6 +13,7 @@
 
 -export([parse/2, check/2, check/3,
          parse_and_check/2, parse_and_check/3,
+         to_record/3, to_record/4,
          format_error/2,
          usage/2, usage/3, usage/4, tokenize/1]).
 -export([usage_cmd_line/2]).
@@ -187,6 +188,32 @@ parse(OptSpecList, OptAcc, ArgAcc, _ArgPos, []) ->
     %% not present but had default arguments in the specification.
     {ok, {lists:reverse(append_default_options(OptSpecList, OptAcc)), lists:reverse(ArgAcc)}}.
 
+%% @doc Convert options from a list into a record.
+%%      The `FieldNames' list is the result of a call to `record_info(fields, Record)', and
+%%      `Record' is the initial value of the record to be populated with option values.
+-spec to_record([option()], [atom()], tuple()) -> tuple().
+to_record(Options, FieldNames, Record) ->
+    to_record(Options, FieldNames, Record, fun(_,V) -> {ok, V} end).
+
+%% @doc Convert options from a list into a record.
+%%      This function is equivalent to `opts_to_record/3' except for taking another `Validate'
+%%      argument, which is a function `(Field, Value) -> {ok, NewValue} | ignore' used for
+%%      validating the `Field' before it's assigned to the corresponding field in the `Record'.
+-spec to_record([option()], [atom()], tuple(),
+        fun((atom(), term()) -> {ok, term()} | ignore)) -> tuple().
+to_record(Options, RecordFieldNames, Record, Validate) when is_function(Validate, 2) ->
+    lists:foldl(fun({Opt, Value}, Rec) ->
+        I = pos(RecordFieldNames, Opt, 2),
+        case Validate(Opt, Value) of
+            {ok, V} when I > 1 -> setelement(I, Rec, V);
+            {ok, _}            -> throw({field_not_found, Opt, RecordFieldNames});
+            ignore             -> Rec
+        end
+    end, Record, Options).
+
+pos([],    _, _) -> 1;
+pos([H|_], H, N) -> N;
+pos([_|T], H, N) -> pos(T, H, N+1).
 
 %% @doc Format the error code returned by prior call to parse/2 or check/2.
 -spec format_error([option_spec()], {error, {Reason :: atom(), Data :: term()}} |

@@ -527,3 +527,49 @@ Spec =
 
 help = getopt:parse_and_check(Spec, "-h", [help]).
 ```
+
+Converting parsed list of arguments to a record
+===============================================
+
+Occasionally it is more convenient to represent the parsed arguments in the
+form of a record rather than a list. Use ``getopt:to_record/3,4`` for this
+purpose.
+
+```erlang
+-record(args, {host, port, verbose}).
+
+OptionSpecs = [{host,    $h, undefined, string,  []},
+               {port,    $p, undefined, integer, []},
+               {verbose, $v, undefined, integer, []}],
+
+{ok, ParsedArgs, _Other} = getopt:parse(OptionSpecs, "-v -h localhost -p 8000"),
+
+% Now ParsedArgs is a list:
+%   [{verbose, 1}, {host, "localhost"}, {port, 8000}], []}
+
+Args = getopt:to_record(ParsedArgs, record_info(fields, args), #args{}),
+
+% Test that Args record was filled with all parsed arguments from the OptionSpecs:
+
+Args = #args{host = "localhost", port = 8000, verbose = 1}.
+```
+
+It is also possible to pass a custom validation function to ``getopt:to_record/4``.
+That function allows to translate the values assigned to the record's fields, as
+well as to ignore some options:
+
+```erlang
+-record(args2, {host, port}).
+
+Fun = fun(verbose, _) -> ignore;
+         (port,    N) when N < 1024 -> throw({invalid_port, N});
+         (port,    N) -> {ok, N+1};
+         (_,   Value) -> {ok, Value}
+      end,
+
+Args2 = getopt:to_record(ParsedArgs, record_info(fields, args2), #args2{}, Fun),
+
+% Test that Args2 record was filled with all parsed arguments from the OptionSpecs:
+
+Args2 = #args2{host = "localhost", port = 8001}.
+```

@@ -21,7 +21,6 @@
 -define(ARG_SPEC(Opt), element(4, Opt)).
 -define(HELP(Opt), element(5, Opt)).
 
-
 %%%-------------------------------------------------------------------
 %%% UNIT TESTS
 %%%-------------------------------------------------------------------
@@ -330,6 +329,27 @@ format_error_test_() ->
       ?_assertEqual("invalid option: --zz",
                     format_error(Opts, parse_and_check(Opts, "--arg=abc --zz")))}
 
+    ].
+
+-record(test_rec, {a, b, c}).
+
+check_to_record_test_() ->
+    Options = [{d, to_be_ignored}, {a, 10}, {b, test}, {c, "abc"}],
+    Fun     = fun(d, _Value) -> ignore;
+                 (b, _Value) -> {ok, replaced};
+                 (_,  Value) -> {ok, Value}
+              end,
+    Fields  = record_info(fields, test_rec),
+    [
+      {"Check to_record conversion - throw without validation",
+       ?_assertException(throw, {field_not_found, d, [a,b,c]},
+                     getopt:to_record(Options, Fields, #test_rec{}))},
+      {"Check to_record conversion without validation",
+       ?_assertEqual(#test_rec{a=10, b=test,     c="abc"},
+                     getopt:to_record([{a,10},{b,test},{c,"abc"}], Fields, #test_rec{}))},
+      {"Check to_record conversion with validation",
+       ?_assertEqual(#test_rec{a=10, b=replaced, c="abc"},
+                     getopt:to_record(Options, Fields, #test_rec{}, Fun))}
     ].
 
 check_help_test_() ->
