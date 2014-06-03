@@ -200,20 +200,23 @@ to_record(Options, FieldNames, Record) ->
 %%      `Validate' argument, which is a function
 %%      `(Field, OldFieldValue, OptionValue) -> {ok, NewFieldValue} | ignore'
 %%      used for validating the `Field' before it's assigned to the corresponding field
-%%      in the `Record'.
+%%      in the `Record'. Options with `undefined' values are skipped.
 -spec to_record([option()], [atom()], tuple(),
         fun((atom(), term(), term()) -> {ok, term()} | ignore)) -> tuple().
 to_record(Options, RecordFieldNames, Record, Validate) when is_function(Validate, 3) ->
-    lists:foldl(fun({Opt, Value}, Rec) ->
-        I = pos(RecordFieldNames, Opt, 2),
-        case Validate(Opt, old_val(I, Rec), Value) of
-            {ok, V} when I > 1 -> setelement(I, Rec, V);
-            {ok, _}            -> throw({field_not_found, Opt, RecordFieldNames});
-            ignore             -> Rec
-        end
+    lists:foldl(fun
+        ({_Opt,undefined}, Rec) ->
+            Rec;
+        ({Opt, Value}, Rec) ->
+            I = pos(RecordFieldNames, Opt, 2),
+            case Validate(Opt, old_val(I, Rec), Value) of
+                {ok, V} when I > 1 -> setelement(I, Rec, V);
+                {ok, _}            -> throw({field_not_found, Opt, RecordFieldNames});
+                ignore             -> Rec
+            end
     end, Record, Options).
 
-old_val(0, Rec) -> undefined;
+old_val(0,_Rec) -> undefined;
 old_val(N, Rec) -> element(N, Rec).
 
 pos([],    _, _) -> 0;
