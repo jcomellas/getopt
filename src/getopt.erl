@@ -207,14 +207,19 @@ to_record(Options, RecordFieldNames, Record, Validate) when is_function(Validate
     lists:foldl(fun
         ({_Opt,undefined}, Rec) ->
             Rec;
+        (Opt, Rec) when is_atom(Opt) ->
+            set_val(Opt, true,  Rec, RecordFieldNames, Validate);
         ({Opt, Value}, Rec) ->
-            I = pos(RecordFieldNames, Opt, 2),
-            case Validate(Opt, old_val(I, Rec), Value) of
-                {ok, V} when I > 1 -> setelement(I, Rec, V);
-                {ok, _}            -> throw({field_not_found, Opt, RecordFieldNames});
-                ignore             -> Rec
-            end
+            set_val(Opt, Value, Rec, RecordFieldNames, Validate)
     end, Record, Options).
+
+set_val(Opt, Value, Rec, RecordFieldNames, Validate) ->
+    I = pos(RecordFieldNames, Opt, 2),
+    case Validate(Opt, old_val(I, Rec), Value) of
+        {ok, V} when I > 1 -> setelement(I, Rec, V);
+        {ok, _}            -> throw({field_not_found, Opt, RecordFieldNames});
+        ignore             -> Rec
+    end.
 
 old_val(0,_Rec) -> undefined;
 old_val(N, Rec) -> element(N, Rec).
