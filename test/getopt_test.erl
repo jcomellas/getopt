@@ -287,7 +287,10 @@ tokenize_test_() ->
 check_test_() ->
     OptSpecList =
         [
-         {arg,        $a,        "arg",        string,   "Required arg"}
+         {  arg,        $a,     "arg",   string,   "Required arg"},
+         {short,        $s, undefined,   string,   "short option"},
+         { long, undefined,    "long",   string,   "long option"},
+         {other, undefined, undefined,   string,   "task"}
         ],
     {ok, {Opts, _}} = parse(OptSpecList, ""),
     [
@@ -301,6 +304,15 @@ check_test_() ->
      {"Format missing option error test 2",
       ?_assertEqual("missing required option: -a (arg)",
                     format_error(OptSpecList, {missing_required_option, arg}))},
+     {"Format missing option error test 3",
+      ?_assertEqual("missing required option: -s",
+                    format_error(OptSpecList, {missing_required_option, short}))},
+     {"Format missing option error test 4",
+      ?_assertEqual("missing required option: --long",
+                    format_error(OptSpecList, {missing_required_option, long}))},
+     {"Format missing option error test 5",
+      ?_assertEqual("missing required option: <other>",
+                    format_error(OptSpecList, {missing_required_option, other}))},
      {"Format invalid option error test 1",
       ?_assertEqual("invalid option: --verbose",
                     format_error(OptSpecList, {error, {invalid_option, "--verbose"}}))},
