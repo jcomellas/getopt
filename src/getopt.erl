@@ -149,8 +149,13 @@ parse(OptSpecList, OptAcc, ArgAcc, _ArgPos, []) ->
 format_error(OptSpecList, {error, Reason}) ->
     format_error(OptSpecList, Reason);
 format_error(OptSpecList, {missing_required_option, Name}) ->
-    {_Name, Short, Long, _Type, _Help} = lists:keyfind(Name, 1, OptSpecList),
-    lists:flatten(["missing required option: -", [Short], " (", to_string(Long), ")"]);
+    OptStr = case lists:keyfind(Name, 1, OptSpecList) of
+                 {Name,  undefined, undefined, _Type, _Help} -> ["<", to_string(Name), ">"];
+                 {_Name, undefined,      Long, _Type, _Help} -> ["--", Long];
+                 {_Name,     Short, undefined, _Type, _Help} -> ["-", Short];
+                 {_Name,     Short,      Long, _Type, _Help} -> ["-", Short, " (", Long, ")"]
+             end,
+    lists:flatten(["missing required option: ", OptStr]);
 format_error(_OptSpecList, {invalid_option, OptStr}) ->
     lists:flatten(["invalid option: ", to_string(OptStr)]);
 format_error(_OptSpecList, {invalid_option_arg, {Name, Arg}}) ->
