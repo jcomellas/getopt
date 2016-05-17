@@ -12,7 +12,7 @@
 -author('juanjo@comellas.org').
 
 -export([parse/2, check/2, parse_and_check/2, format_error/2,
-         usage/2, usage/3, usage/4, tokenize/1]).
+         usage/2, usage/3, usage/4, usage/6, tokenize/1]).
 -export([usage_cmd_line/2]).
 
 -define(LINE_LENGTH, 75).
@@ -573,6 +573,22 @@ usage(OptSpecList, ProgramName, CmdLineTail, OptionsTail) ->
 usage(OptSpecList, ProgramName, CmdLineTail, OptionsTail, OutputStream) ->
     io:format(OutputStream, "~ts~n~n~ts~n",
               [unicode:characters_to_list(usage_cmd_line(ProgramName, OptSpecList, CmdLineTail)), unicode:characters_to_list(usage_options(OptSpecList, OptionsTail))]).
+
+%% @doc Show a message on standard_error or standard_io indicating the
+%%      command line options and arguments that are supported by the
+%%      program. The Description allows for structured command line usage
+%%      that works in addition to the standard options, and appears between
+%%      the usage_cmd_line and usage_options sections.  The CmdLineTail and
+%%      OptionsTail arguments are a string that is added to the end of the
+%%      usage command line and a list of tuples that are added to the end of
+%%      the options' help lines.
+-spec usage([option_spec()], ProgramName :: string(), CmdLineTail :: string(),
+            Description :: string(),
+            [{OptionName :: string(), Help :: string()}],
+            output_stream()) -> ok.
+usage(OptSpecList, ProgramName, CmdLineTail, Description, OptionsTail, OutputStream) ->
+    io:format(OutputStream, "~ts~n~n~ts~n~n~ts~n",
+              [unicode:characters_to_list(usage_cmd_line(ProgramName, OptSpecList, CmdLineTail)), Description, unicode:characters_to_list(usage_options(OptSpecList, OptionsTail))]).
 
 
 -spec usage_cmd_line(ProgramName :: string(), [option_spec()]) -> iolist().
