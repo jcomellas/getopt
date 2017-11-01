@@ -1,6 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @author Juan Jose Comellas <juanjo@comellas.org>
-%%% @copyright (C) 2009 Juan Jose Comellas
+%%% @copyright (C) 2009-2017 Juan Jose Comellas
 %%% @doc Parses command line options with a format similar to that of GNU getopt.
 %%% @end
 %%%
