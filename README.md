@@ -36,7 +36,7 @@ To use getopt in your project you can just add it as a dependency in your
 Usage
 -----
 
-The *getopt* module provides four functions:
+The `getopt` module provides four functions:
 
 ```erlang
 parse([{Name, Short, Long, ArgSpec, Help}], Args :: string() | [string()]) ->
