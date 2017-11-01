@@ -442,7 +442,7 @@ to_type(integer, Arg) ->
 to_type(float, Arg) ->
     list_to_float(Arg);
 to_type(boolean, Arg) ->
-    LowerArg = string:to_lower(Arg),
+    LowerArg = lowercase(Arg),
     case is_arg_true(LowerArg) of
         true ->
             true;
@@ -500,7 +500,7 @@ is_implicit_arg(_Type, _Arg) ->
 
 -spec is_boolean_arg(string()) -> boolean().
 is_boolean_arg(Arg) ->
-    LowerArg = string:to_lower(Arg),
+    LowerArg = lowercase(Arg),
     is_arg_true(LowerArg) orelse is_arg_false(LowerArg).
 
 
@@ -619,7 +619,7 @@ usage_cmd_line(ProgramName, OptSpecList, CmdLineTail) ->
 %%      already wrapped according to the maximum MaxLineLength.
 -spec usage_cmd_line_options(MaxLineLength :: non_neg_integer(), [option_spec()], CmdLineTail :: string()) -> iolist().
 usage_cmd_line_options(MaxLineLength, OptSpecList, CmdLineTail) ->
-    usage_cmd_line_options(MaxLineLength, OptSpecList ++ string:tokens(CmdLineTail, " "), [], 0, []).
+    usage_cmd_line_options(MaxLineLength, OptSpecList ++ lexemes(CmdLineTail, " "), [], 0, []).
 
 usage_cmd_line_options(MaxLineLength, [OptSpec | Tail], LineAcc, LineAccLength, Acc) ->
     Option = [$\s | lists:flatten(usage_cmd_line_option(OptSpec))],
@@ -790,7 +790,7 @@ wrap_text_line(Length, [_ | _] = Help, Acc, Count, CurrentLineAcc) ->
     %% Look for the first whitespace character in the current (reversed) line
     %% buffer to get a wrapped line. If there is no whitespace just cut the
     %% line at the position corresponding to the maximum length.
-    {NextLineAcc, WrappedLine} = case string:cspan(CurrentLineAcc, " \t") of
+    {NextLineAcc, WrappedLine} = case cspan(CurrentLineAcc, " \t") of
                                      WhitespacePos when WhitespacePos < Count ->
                                          lists:split(WhitespacePos, CurrentLineAcc);
                                      _ ->
@@ -933,3 +933,15 @@ to_string(Atom) when is_atom(Atom) ->
     atom_to_list(Atom);
 to_string(Value) ->
     io_lib:format("~p", [Value]).
+
+%% OTP-20/21 conversion to unicode string module
+-ifdef(unicode_str).
+lowercase(Str) -> string:lowercase(Str).
+lexemes(Str, Separators) -> string:lexemes(Str, Separators).
+cspan(Str, Chars) -> length(element(1,string:take(Str, Chars, true))).
+-else.
+lowercase(Str) -> string:to_lower(Str).
+lexemes(Str, Separators) -> string:tokens(Str, Separators).
+cspan(Str, Chars) -> string:cspan(Str, Chars).
+-endif.
+
