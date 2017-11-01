@@ -6,5 +6,5 @@
   {registered, []},
   {maintainers, ["Juan Jose Comellas"]},
   {licenses, ["BSD"]},
-  {links, ["GitHub", "https://github.com/jcomellas/getopt"]},
+  {links, [{"GitHub", "https://github.com/jcomellas/getopt"}]},
   {applications, [kernel, stdlib]}]}.
