@@ -4,4 +4,7 @@
   {vsn, "1.0.0"},
   {modules, []},
   {registered, []},
+  {maintainers, ["Juan Jose Comellas"]},
+  {licenses, ["BSD"]},
+  {links, ["GitHub", "https://github.com/jcomellas/getopt"]},
   {applications, [kernel, stdlib]}]}.
