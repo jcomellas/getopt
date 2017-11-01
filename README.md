@@ -27,7 +27,7 @@ To use getopt in your project you can just add it as a dependency in your
 ```sh
 {deps,
  [
-  {getopt, "1.0.0"}
+  {getopt, "1.0.1"}
  ]
 }
 ```
