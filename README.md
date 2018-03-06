@@ -260,7 +260,7 @@ e.g. `--increment=-100` is a valid expression; whereas `--increment -100` is inv
 Arguments of `utf8_binary` type allow proper binary encoding of arguments containing
 code points greater than 255. The resulting value is a normalized UTF-8 binary.
 
-As of Erlang/20, `standart_error` device has `unicode` option set to `false`.
+As of Erlang/20, `standard_error` device has `unicode` option set to `false`.
 It prevents correct printing of usage for arguments containing unicode
 binaries/strings as default values. To fix this, one needs to enable unicode:
 
