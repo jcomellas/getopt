@@ -323,3 +323,18 @@ check_test_() ->
       ?_assertEqual("option 'verbose' has invalid argument: 100",
                     format_error(OptSpecList, {error, {invalid_option_arg, {verbose, "100"}}}))}
     ].
+
+utf8_binary_test_() ->
+  OptSpecList = [{utf8, undefined, "utf8", utf8_binary, "UTF-8 arg"}],
+  Unicode = [228, 220, 223, 1455],
+  Utf8 = unicode:characters_to_binary(Unicode),
+  io:setopts(standard_error, [{encoding, utf8}]),
+  OptSpecsWithDefault = [{utf8, undefined, "utf8", {utf8_binary, Utf8}, "UTF-8 arg"}],
+  [{"Empty utf8_binary argument",
+    ?_assertEqual({ok, {[{utf8, <<>>}], []}}, parse(OptSpecList, ["--utf8", ""]))},
+   {"Non empty utf8_binary argument",
+    ?_assertEqual({ok, {[{utf8, Utf8}], []}}, parse(OptSpecList, ["--utf8", Unicode]))},
+   {"Default utf8_binary argument",
+    ?_assertEqual({ok, {[{utf8, Utf8}], []}}, parse(OptSpecsWithDefault, []))},
+   {"Default utf8_binary argument usage",
+    ?_assert(is_list(string:find(getopt:usage_options(OptSpecsWithDefault), Unicode)))}].
