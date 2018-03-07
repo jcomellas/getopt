@@ -436,7 +436,7 @@ to_type({Type, _DefaultArg}, Arg) ->
 to_type(binary, Arg) ->
     list_to_binary(Arg);
 to_type(utf8_binary, Arg) ->
-    unicode:characters_to_nfc_binary(Arg);
+    unicode:characters_to_binary(Arg);
 to_type(atom, Arg) ->
     list_to_atom(Arg);
 to_type(integer, Arg) ->
