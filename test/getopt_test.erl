@@ -13,7 +13,7 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
--import(getopt, [parse/2, check/2, parse_and_check/2, format_error/2, tokenize/1]).
+-import(getopt, [parse/2, parse/3, check/2, parse_and_check/2, format_error/2, tokenize/1]).
 
 -define(NAME(Opt), element(1, Opt)).
 -define(SHORT(Opt), element(2, Opt)).
@@ -365,3 +365,44 @@ utf8_binary_test_() ->
     ?_assertEqual({ok, {[{utf8, Utf8}], []}}, parse(OptSpecsWithDefault, []))},
    {"Default utf8_binary argument usage",
     ?_assert(is_list(string:find(getopt:usage_options(OptSpecsWithDefault), Unicode)))}].
+
+parse_command_test_() ->
+  OptSpecList = [{arg, $a, "arg", string, "Required arg"}],
+  OptSpecList1 = [{arg, $a, "arg", string, "Required arg"},
+                  {positional, undefined, undefined, string, "Positional arg"}],
+  [{"Parse command: no opts, no command",
+    ?_assertEqual({ok, {[], []}},
+                  parse(OptSpecList, [], [{command, true}]))},
+   {"Parse command: no opts, command, no command opts",
+    ?_assertEqual({ok, {[], ["command"]}},
+                  parse(OptSpecList, ["command"], [{command, true}]))},
+   {"Parse command: opts, no command",
+    ?_assertEqual({ok, {[{arg, "a"}], []}},
+                  parse(OptSpecList, ["-a" "a"], [{command, true}]))},
+   {"Parse command: opts, command, no command opts",
+    ?_assertEqual({ok, {[{arg, "a"}], ["command"]}},
+                  parse(OptSpecList, ["-a", "a", "command"], [{command, true}]))},
+   {"Parse command: no opts, command, command opts",
+    ?_assertEqual({ok, {[], ["command", "--arg"]}},
+                  parse(OptSpecList, ["command", "--arg"], [{command, true}]))},
+   {"Parse command: opts, command, command opts",
+    ?_assertEqual({ok, {[{arg, "a"}], ["command", "--arg", "-a2", "a2"]}},
+                  parse(OptSpecList,
+                        ["--arg", "a", "command", "--arg", "-a2", "a2"],
+                        [{command, true}]))},
+  {"Parse command: opts, positional arg, command, command opts",
+    ?_assertEqual({ok, {[{arg, "a"}, {positional, "p"}],
+                        ["command", "--arg", "-a2", "a2"]}},
+                  parse(OptSpecList1,
+                        ["--arg", "a", "p", "command", "--arg", "-a2", "a2"],
+                        [{command, true}]))},
+  {"Parse command 'false': opts, command, command opts",
+    ?_assertEqual({ok, {[{arg, "a"}, {arg, "a2"}], ["command"]}},
+                  parse(OptSpecList,
+                        ["--arg", "a", "command", "--arg", "a2"],
+                        [{command, false}]))},
+  {"Parse command 'false': opts, command, command opts",
+    ?_assertEqual({error, {invalid_option, "-b"}},
+                  parse(OptSpecList,
+                        ["--arg", "a", "command", "--arg", "a2", "-b", "b"],
+                        [{command, false}]))}].

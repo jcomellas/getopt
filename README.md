@@ -36,10 +36,13 @@ To use getopt in your project you can just add it as a dependency in your
 Usage
 -----
 
-The `getopt` module provides four functions:
+The `getopt` module provides following functions:
 
 ```erlang
 parse([{Name, Short, Long, ArgSpec, Help}], Args :: string() | [string()]) ->
+    {ok, {Options, NonOptionArgs}} | {error, {Reason, Data}}
+
+parse([{Name, Short, Long, ArgSpec, Help}], Args :: string() | [string()], Opts :: [atom() | {atom(), term()}]) ->
     {ok, {Options, NonOptionArgs}} | {error, {Reason, Data}}
 
 tokenize(CmdLine :: string()) -> [string()]
@@ -141,6 +144,32 @@ Will return:
       {verbose,3}],
      ["dummy1","dummy2"]}}
 ```
+
+The `parse/3` function takes parsing options as the third argument.
+
+The options are:
+
+`{command, true | false}` - if `true` directs to stop parsing at the first
+unrecognized token. It is useful when the program has subcommands with their
+own sets of options. The rest of the arguments is returned untouched as
+non-option arguments and can be parsed again as a different set of options.
+
+E.g. the call:
+
+```erlang
+Args = ["--long", "l", "-s", "s", "-v", "command1", "-v", "--long", "l", "command2", "-v"]
+getopt:parse(OptSpecList, Args, [{command, true}]).
+```
+
+Will return:
+
+```erlang
+{ok,{[{long,"l"},
+      {short,"s"},
+      {verbose,1}],
+     ["command1","-v","--long","l","command2","-v"]}}
+```
+
 
 The `tokenize/1` function will separate a command line string into
 tokens, taking into account whether an argument is single or double

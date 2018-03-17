@@ -11,7 +11,7 @@
 -module(getopt).
 -author('juanjo@comellas.org').
 
--export([parse/2, check/2, parse_and_check/2, format_error/2,
+-export([parse/2, parse/3, check/2, parse_and_check/2, format_error/2,
          usage/2, usage/3, usage/4, usage/6, tokenize/1]).
 -export([usage_cmd_line/2, usage_options/1]).
 
@@ -105,39 +105,50 @@ check(OptSpecList, ParsedOpts) when is_list(OptSpecList), is_list(ParsedOpts) ->
 -spec parse([option_spec()], string() | [string()]) ->
                    {ok, {[option()], [string()]}} | {error, {Reason :: atom(), Data :: term()}}.
 parse(OptSpecList, CmdLine) when is_list(CmdLine) ->
+    parse(OptSpecList, CmdLine, []).
+
+
+-spec parse([option_spec()], string() | [string()], ParseOpts :: list()) ->
+                   {ok, {[option()], [string()]}} | {error, {Reason :: atom(), Data :: term()}}.
+parse(OptSpecList, CmdLine, ParseOpts) when is_list(CmdLine) ->
     try
         Args = if
                    is_integer(hd(CmdLine)) -> tokenize(CmdLine);
                    true                    -> CmdLine
                end,
-        parse(OptSpecList, [], [], 0, Args)
+        parse(OptSpecList, [], [], 0, Args, ParseOpts)
     catch
         throw: {error, {_Reason, _Data}} = Error ->
             Error
     end.
 
 
--spec parse([option_spec()], [option()], [string()], integer(), [string()]) ->
+-spec parse([option_spec()], [option()], [string()], integer(), [string()], list()) ->
                    {ok, {[option()], [string()]}}.
 %% Process the option terminator.
-parse(OptSpecList, OptAcc, ArgAcc, _ArgPos, ["--" | Tail]) ->
+parse(OptSpecList, OptAcc, ArgAcc, _ArgPos, ["--" | Tail], _ParseOpts) ->
     %% Any argument present after the terminator is not considered an option.
     {ok, {lists:reverse(append_default_options(OptSpecList, OptAcc)), lists:reverse(ArgAcc, Tail)}};
 %% Process long options.
-parse(OptSpecList, OptAcc, ArgAcc, ArgPos, ["--" ++ OptArg = OptStr | Tail]) ->
-    parse_long_option(OptSpecList, OptAcc, ArgAcc, ArgPos, Tail, OptStr, OptArg);
+parse(OptSpecList, OptAcc, ArgAcc, ArgPos, ["--" ++ OptArg = OptStr | Tail], ParseOpts) ->
+    parse_long_option(OptSpecList, OptAcc, ArgAcc, ArgPos, Tail, OptStr, OptArg, ParseOpts);
 %% Process short options.
-parse(OptSpecList, OptAcc, ArgAcc, ArgPos, ["-" ++ ([_Char | _] = OptArg) = OptStr | Tail]) ->
-    parse_short_option(OptSpecList, OptAcc, ArgAcc, ArgPos, Tail, OptStr, OptArg);
+parse(OptSpecList, OptAcc, ArgAcc, ArgPos, ["-" ++ ([_Char | _] = OptArg) = OptStr | Tail], ParseOpts) ->
+    parse_short_option(OptSpecList, OptAcc, ArgAcc, ArgPos, Tail, OptStr, OptArg, ParseOpts);
 %% Process non-option arguments.
-parse(OptSpecList, OptAcc, ArgAcc, ArgPos, [Arg | Tail]) ->
+parse(OptSpecList, OptAcc, ArgAcc, ArgPos, [Arg | Tail] = Args, ParseOpts) ->
     case find_non_option_arg(OptSpecList, ArgPos) of
         {value, OptSpec} when ?IS_OPT_SPEC(OptSpec) ->
-            parse(OptSpecList, add_option_with_arg(OptSpec, Arg, OptAcc), ArgAcc, ArgPos + 1, Tail);
+            parse(OptSpecList, add_option_with_arg(OptSpec, Arg, OptAcc), ArgAcc, ArgPos + 1, Tail, ParseOpts);
         false ->
-            parse(OptSpecList, OptAcc, [Arg | ArgAcc], ArgPos, Tail)
+            case proplists:get_bool(command, ParseOpts) of
+                true ->
+                    {ok, {lists:reverse(append_default_options(OptSpecList, OptAcc)), lists:reverse(ArgAcc) ++ Args}};
+                false ->
+                    parse(OptSpecList, OptAcc, [Arg | ArgAcc], ArgPos, Tail, ParseOpts)
+            end
     end;
-parse(OptSpecList, OptAcc, ArgAcc, _ArgPos, []) ->
+parse(OptSpecList, OptAcc, ArgAcc, _ArgPos, [], _ParseOpts) ->
     %% Once we have completed gathering the options we add the ones that were
     %% not present but had default arguments in the specification.
     {ok, {lists:reverse(append_default_options(OptSpecList, OptAcc)), lists:reverse(ArgAcc)}}.
@@ -179,25 +190,25 @@ opt_to_list({_Name, Short, Long, _Type, _Help}) ->
 %%        --foo      Single option 'foo', no argument
 %%        --foo=bar  Single option 'foo', argument "bar"
 %%        --foo bar  Single option 'foo', argument "bar"
--spec parse_long_option([option_spec()], [option()], [string()], integer(), [string()], string(), string()) ->
+-spec parse_long_option([option_spec()], [option()], [string()], integer(), [string()], string(), string(), list()) ->
                                {ok, {[option()], [string()]}}.
-parse_long_option(OptSpecList, OptAcc, ArgAcc, ArgPos, Args, OptStr, OptArg) ->
+parse_long_option(OptSpecList, OptAcc, ArgAcc, ArgPos, Args, OptStr, OptArg, ParseOpts) ->
     case split_assigned_arg(OptArg) of
         {Long, Arg} ->
             %% Get option that has its argument within the same string
             %% separated by an equal ('=') character (e.g. "--port=1000").
-            parse_long_option_assigned_arg(OptSpecList, OptAcc, ArgAcc, ArgPos, Args, OptStr, Long, Arg);
+            parse_long_option_assigned_arg(OptSpecList, OptAcc, ArgAcc, ArgPos, Args, OptStr, Long, Arg, ParseOpts);
 
         Long ->
             case lists:keyfind(Long, ?OPT_LONG, OptSpecList) of
                 {Name, _Short, Long, undefined, _Help} ->
-                    parse(OptSpecList, [Name | OptAcc], ArgAcc, ArgPos, Args);
+                    parse(OptSpecList, [Name | OptAcc], ArgAcc, ArgPos, Args, ParseOpts);
 
                 {_Name, _Short, Long, _ArgSpec, _Help} = OptSpec ->
                     %% The option argument string is empty, but the option requires
                     %% an argument, so we look into the next string in the list.
                     %% e.g ["--port", "1000"]
-                    parse_long_option_next_arg(OptSpecList, OptAcc, ArgAcc, ArgPos, Args, OptSpec);
+                    parse_long_option_next_arg(OptSpecList, OptAcc, ArgAcc, ArgPos, Args, OptSpec, ParseOpts);
                 false ->
                     throw({error, {invalid_option, OptStr}})
             end
@@ -208,16 +219,16 @@ parse_long_option(OptSpecList, OptAcc, ArgAcc, ArgPos, Args, OptStr, OptArg) ->
 %%      the '=' character, add it to the option accumulator and continue parsing the
 %%      rest of the arguments recursively. This syntax is only valid for long options.
 -spec parse_long_option_assigned_arg([option_spec()], [option()], [string()], integer(),
-                                     [string()], string(), string(), string()) ->
+                                     [string()], string(), string(), string(), list()) ->
                                             {ok, {[option()], [string()]}}.
-parse_long_option_assigned_arg(OptSpecList, OptAcc, ArgAcc, ArgPos, Args, OptStr, Long, Arg) ->
+parse_long_option_assigned_arg(OptSpecList, OptAcc, ArgAcc, ArgPos, Args, OptStr, Long, Arg, ParseOpts) ->
     case lists:keyfind(Long, ?OPT_LONG, OptSpecList) of
         {_Name, _Short, Long, ArgSpec, _Help} = OptSpec ->
             case ArgSpec of
                 undefined ->
                     throw({error, {invalid_option_arg, OptStr}});
                 _ ->
-                    parse(OptSpecList, add_option_with_assigned_arg(OptSpec, Arg, OptAcc), ArgAcc, ArgPos, Args)
+                    parse(OptSpecList, add_option_with_assigned_arg(OptSpec, Arg, OptAcc), ArgAcc, ArgPos, Args, ParseOpts)
             end;
         false ->
             throw({error, {invalid_option, OptStr}})
@@ -241,15 +252,15 @@ split_assigned_arg(OptStr, [], _Acc) ->
 %% @doc Retrieve the argument for an option from the next string in the list of
 %%      command-line parameters or set the value of the argument from the argument
 %%      specification (for boolean and integer arguments), if possible.
-parse_long_option_next_arg(OptSpecList, OptAcc, ArgAcc, ArgPos, Args, {Name, _Short, _Long, ArgSpec, _Help} = OptSpec) ->
+parse_long_option_next_arg(OptSpecList, OptAcc, ArgAcc, ArgPos, Args, {Name, _Short, _Long, ArgSpec, _Help} = OptSpec, ParseOpts) ->
     ArgSpecType = arg_spec_type(ArgSpec),
     case Args =:= [] orelse is_implicit_arg(ArgSpecType, hd(Args)) of
         true ->
-            parse(OptSpecList, add_option_with_implicit_arg(OptSpec, OptAcc), ArgAcc, ArgPos, Args);
+            parse(OptSpecList, add_option_with_implicit_arg(OptSpec, OptAcc), ArgAcc, ArgPos, Args, ParseOpts);
         false ->
             [Arg | Tail] = Args,
             try
-                parse(OptSpecList, [{Name, to_type(ArgSpecType, Arg)} | OptAcc], ArgAcc, ArgPos, Tail)
+                parse(OptSpecList, [{Name, to_type(ArgSpecType, Arg)} | OptAcc], ArgAcc, ArgPos, Tail, ParseOpts)
             catch
                 error:_ ->
                     throw({error, {invalid_option_arg, {Name, Arg}}})
@@ -266,15 +277,15 @@ parse_long_option_next_arg(OptSpecList, OptAcc, ArgAcc, ArgPos, Args, {Name, _Sh
 %%        -abc     Multiple options: 'a'; 'b'; 'c'
 %%        -bcafoo  Multiple options: 'b'; 'c'; 'a' with argument "foo"
 %%        -aaa     Multiple repetitions of option 'a' (only valid for options with integer arguments)
--spec parse_short_option([option_spec()], [option()], [string()], integer(), [string()], string(), string()) ->
+-spec parse_short_option([option_spec()], [option()], [string()], integer(), [string()], string(), string(), list()) ->
                                 {ok, {[option()], [string()]}}.
-parse_short_option(OptSpecList, OptAcc, ArgAcc, ArgPos, Args, OptStr, OptArg) ->
-    parse_short_option(OptSpecList, OptAcc, ArgAcc, ArgPos, Args, OptStr, first, OptArg).
+parse_short_option(OptSpecList, OptAcc, ArgAcc, ArgPos, Args, OptStr, OptArg, ParseOpts) ->
+    parse_short_option(OptSpecList, OptAcc, ArgAcc, ArgPos, Args, OptStr, first, OptArg, ParseOpts).
 
-parse_short_option(OptSpecList, OptAcc, ArgAcc, ArgPos, Args, OptStr, OptPos, [Short | Arg]) ->
+parse_short_option(OptSpecList, OptAcc, ArgAcc, ArgPos, Args, OptStr, OptPos, [Short | Arg], ParseOpts) ->
     case lists:keyfind(Short, ?OPT_SHORT, OptSpecList) of
         {Name, Short, _Long, undefined, _Help} ->
-            parse_short_option(OptSpecList, [Name | OptAcc], ArgAcc, ArgPos, Args, OptStr, first, Arg);
+            parse_short_option(OptSpecList, [Name | OptAcc], ArgAcc, ArgPos, Args, OptStr, first, Arg, ParseOpts);
 
         {_Name, Short, _Long, ArgSpec, _Help} = OptSpec ->
             %% The option has a specification, so it requires an argument.
@@ -282,41 +293,41 @@ parse_short_option(OptSpecList, OptAcc, ArgAcc, ArgPos, Args, OptStr, OptPos, [S
                 [] ->
                     %% The option argument string is empty, but the option requires
                     %% an argument, so we look into the next string in the list.
-                    parse_short_option_next_arg(OptSpecList, OptAcc, ArgAcc, ArgPos, Args, OptSpec, OptPos);
+                    parse_short_option_next_arg(OptSpecList, OptAcc, ArgAcc, ArgPos, Args, OptSpec, OptPos, ParseOpts);
 
                 _ ->
                     case is_valid_arg(ArgSpec, Arg) of
                         true ->
-                            parse(OptSpecList, add_option_with_arg(OptSpec, Arg, OptAcc), ArgAcc, ArgPos, Args);
+                            parse(OptSpecList, add_option_with_arg(OptSpec, Arg, OptAcc), ArgAcc, ArgPos, Args, ParseOpts);
                         _ ->
                             NewOptAcc = case OptPos of
                                             first -> add_option_with_implicit_arg(OptSpec, OptAcc);
                                             _     -> add_option_with_implicit_incrementable_arg(OptSpec, OptAcc)
                                         end,
-                            parse_short_option(OptSpecList, NewOptAcc, ArgAcc, ArgPos, Args, OptStr, next, Arg)
+                            parse_short_option(OptSpecList, NewOptAcc, ArgAcc, ArgPos, Args, OptStr, next, Arg, ParseOpts)
                     end
             end;
 
         false ->
             throw({error, {invalid_option, OptStr}})
     end;
-parse_short_option(OptSpecList, OptAcc, ArgAcc, ArgPos, Args, _OptStr, _OptPos, []) ->
-    parse(OptSpecList, OptAcc, ArgAcc, ArgPos, Args).
+parse_short_option(OptSpecList, OptAcc, ArgAcc, ArgPos, Args, _OptStr, _OptPos, [], ParseOpts) ->
+    parse(OptSpecList, OptAcc, ArgAcc, ArgPos, Args, ParseOpts).
 
 
 %% @doc Retrieve the argument for an option from the next string in the list of
 %%      command-line parameters or set the value of the argument from the argument
 %%      specification (for boolean and integer arguments), if possible.
-parse_short_option_next_arg(OptSpecList, OptAcc, ArgAcc, ArgPos, Args, {Name, _Short, _Long, ArgSpec, _Help} = OptSpec, OptPos) ->
+parse_short_option_next_arg(OptSpecList, OptAcc, ArgAcc, ArgPos, Args, {Name, _Short, _Long, ArgSpec, _Help} = OptSpec, OptPos, ParseOpts) ->
     case Args =:= [] orelse is_implicit_arg(ArgSpec, hd(Args)) of
         true when OptPos =:= first ->
-            parse(OptSpecList, add_option_with_implicit_arg(OptSpec, OptAcc), ArgAcc, ArgPos, Args);
+            parse(OptSpecList, add_option_with_implicit_arg(OptSpec, OptAcc), ArgAcc, ArgPos, Args, ParseOpts);
         true ->
-            parse(OptSpecList, add_option_with_implicit_incrementable_arg(OptSpec, OptAcc), ArgAcc, ArgPos, Args);
+            parse(OptSpecList, add_option_with_implicit_incrementable_arg(OptSpec, OptAcc), ArgAcc, ArgPos, Args, ParseOpts);
         false ->
             [Arg | Tail] = Args,
             try
-                parse(OptSpecList, [{Name, to_type(ArgSpec, Arg)} | OptAcc], ArgAcc, ArgPos, Tail)
+                parse(OptSpecList, [{Name, to_type(ArgSpec, Arg)} | OptAcc], ArgAcc, ArgPos, Tail, ParseOpts)
             catch
                 error:_ ->
                     throw({error, {invalid_option_arg, {Name, Arg}}})
