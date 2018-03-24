@@ -149,12 +149,7 @@ parse(OptSpecList, OptAcc, ArgAcc, _ArgPos, []) ->
 format_error(OptSpecList, {error, Reason}) ->
     format_error(OptSpecList, Reason);
 format_error(OptSpecList, {missing_required_option, Name}) ->
-    OptStr = case lists:keyfind(Name, 1, OptSpecList) of
-                 {Name,  undefined, undefined, _Type, _Help} -> ["<", to_string(Name), ">"];
-                 {_Name, undefined,      Long, _Type, _Help} -> ["--", Long];
-                 {_Name,     Short, undefined, _Type, _Help} -> ["-", Short];
-                 {_Name,     Short,      Long, _Type, _Help} -> ["-", Short, " (", Long, ")"]
-             end,
+    OptStr = opt_to_list(lists:keyfind(Name, 1, OptSpecList)),
     lists:flatten(["missing required option: ", OptStr]);
 format_error(_OptSpecList, {invalid_option, OptStr}) ->
     lists:flatten(["invalid option: ", to_string(OptStr)]);
@@ -162,8 +157,20 @@ format_error(_OptSpecList, {invalid_option_arg, {Name, Arg}}) ->
     lists:flatten(["option \'", to_string(Name) ++ "\' has invalid argument: ", to_string(Arg)]);
 format_error(_OptSpecList, {invalid_option_arg, OptStr}) ->
     lists:flatten(["invalid option argument: ", to_string(OptStr)]);
+format_error(OptSpecList, {missing_option_arg, Name}) ->
+    OptStr = opt_to_list(lists:keyfind(Name, 1, OptSpecList)),
+    lists:flatten(["missing option argument: ", OptStr, " <", to_string(Name), $>]);
 format_error(_OptSpecList, {Reason, Data}) ->
     lists:flatten([to_string(Reason), " ", to_string(Data)]).
+
+opt_to_list({Name, undefined, undefined, _Type, _Help}) ->
+    [$<, to_string(Name), $>];
+opt_to_list({_Name, undefined, Long, _Type, _Help}) ->
+    [$-, $-, Long];
+opt_to_list({_Name, Short, undefined, _Type, _Help}) ->
+    [$-, Short];
+opt_to_list({_Name, Short, Long, _Type, _Help}) ->
+    [$-, Short, $\s, $(, Long, $)].
 
 
 %% @doc Parse a long option, add it to the option accumulator and continue
