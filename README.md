@@ -24,7 +24,7 @@ To build the (very) limited documentation run `rebar edoc`.
 
 To use getopt in your project you can just add it as a dependency in your
 `rebar.config` file in the following way:
-```sh
+```erlang
 {deps,
  [
   {getopt, "1.0.1"}
