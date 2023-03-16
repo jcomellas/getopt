@@ -11,7 +11,7 @@
 {name,"Erlang GetOpt"}.
 {package_id,{"otpr","getopt",{1,0,2}}}.
 {prefix,none}.
-{repo_url,"https://github.com/zxq9/getopt"}.
+{repo_url,"https://github.com/jcomellas/getopt"}.
 {tags,["args","parsing","getopt","cli"]}.
 {type,lib}.
 {ws_url,[]}.
