@@ -1,0 +1,17 @@
+{a_email,[]}.
+{author,"Juan Jose Comellas"}.
+{c_email,[]}.
+{copyright,"Juan Jose Comellas"}.
+{deps,[]}.
+{desc,"A getopt utility for Erlang"}.
+{file_exts,[]}.
+{key_name,none}.
+{license,"BSD-3-Clause-Attribution"}.
+{modules,[]}.
+{name,"Erlang GetOpt"}.
+{package_id,{"otpr","getopt",{1,0,2}}}.
+{prefix,none}.
+{repo_url,"https://github.com/zxq9/getopt"}.
+{tags,["args","parsing","getopt","cli"]}.
+{type,lib}.
+{ws_url,[]}.
