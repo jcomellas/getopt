@@ -144,8 +144,10 @@ parse(OptSpecList, OptAcc, ArgAcc, _ArgPos, []) ->
 
 
 %% @doc Format the error code returned by prior call to parse/2 or check/2.
--spec format_error([option_spec()], {error, {Reason :: atom(), Data :: term()}} |
-                   {Reason :: term(), Data :: term()}) -> string().
+-spec format_error([option_spec()], {error, {Reason, Data}} |
+                   {Reason, Data}) -> string() when
+      Reason :: term(),
+      Data :: term().
 format_error(OptSpecList, {error, Reason}) ->
     format_error(OptSpecList, Reason);
 format_error(OptSpecList, {missing_required_option, Name}) ->
