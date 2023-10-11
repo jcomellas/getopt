@@ -27,7 +27,7 @@ To use getopt in your project you can just add it as a dependency in your
 ```erlang
 {deps,
  [
-  {getopt, "1.0.2"}
+  {getopt, "1.0.3"}
  ]
 }
 ```
