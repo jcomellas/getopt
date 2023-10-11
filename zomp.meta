@@ -9,7 +9,7 @@
 {license,"BSD-3-Clause-Attribution"}.
 {modules,[]}.
 {name,"Erlang GetOpt"}.
-{package_id,{"otpr","getopt",{1,0,2}}}.
+{package_id,{"otpr","getopt",{1,0,3}}}.
 {prefix,none}.
 {repo_url,"https://github.com/jcomellas/getopt"}.
 {tags,["args","parsing","getopt","cli"]}.
