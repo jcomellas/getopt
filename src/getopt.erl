@@ -667,11 +667,11 @@ usage_cmd_line_option({Name, Short, Long, ArgSpec, _Help}) when is_atom(ArgSpec)
     %% For options with no default argument.
     if
         %% For options with short form and argument.
-        Short =/= undefined -> [$[, $-, Short, $\s, $<, atom_to_list(Name), $>, $]];
+        Short =/= undefined -> [$-, Short, $\s, $<, atom_to_list(Name), $>];
         %% For options with only long form and argument.
-        Long =/= undefined  -> [$[, $-, $-, Long, $\s, $<, atom_to_list(Name), $>, $]];
+        Long =/= undefined  -> [$-, $-, Long, $\s, $<, atom_to_list(Name), $>];
         %% For options with neither short nor long form and argument.
-        true                -> [$[, $<, atom_to_list(Name), $>, $]]
+        true                -> [$<, atom_to_list(Name), $>]
     end;
 usage_cmd_line_option({Name, Short, Long, ArgSpec, _Help}) when is_tuple(ArgSpec) ->
     %% For options with default argument.
