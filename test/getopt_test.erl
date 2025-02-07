@@ -27,6 +27,7 @@
 %%%-------------------------------------------------------------------
 
 %%% Main test for the getopt/1 function.
+-spec parse_main_test_() -> [{string(), _}].
 parse_main_test_() ->
     Short           = {short,              $a,        undefined,            undefined,                      "Option with only short form and no argument"},
     Short2          = {short2,             $b,        undefined,            undefined,                      "Second option with only short form and no argument"},
@@ -219,6 +220,7 @@ parse_main_test_() ->
 
 
 %% Real world test for getopt/1.
+-spec parse_multiple_repetitions_test_() -> [{string(), _}].
 parse_multiple_repetitions_test_() ->
     OptSpecList =
         [
@@ -236,6 +238,7 @@ parse_multiple_repetitions_test_() ->
 
 
 %% Arguments with spaces.
+-spec parse_args_with_spaces_test_() -> [{string(), _}].
 parse_args_with_spaces_test_() ->
     OptSpecList =
         [
@@ -250,6 +253,7 @@ parse_args_with_spaces_test_() ->
 
 
 %% Arguments with emulated shell variable expansion.
+-spec parse_variable_expansion_test_() -> [{string(), _}].
 parse_variable_expansion_test_() ->
     Path = os:getenv("PATH"),
     false = os:getenv("DUMMY_VAR_THAT_MUST_NOT_EXIST"),
@@ -275,7 +279,7 @@ parse_variable_expansion_test_() ->
                     parse(OptSpecList, " --path %PATH %DUMMY_VAR_THAT_MUST_NOT_EXIST%  "))}
     ].
 
-
+-spec tokenize_test_() -> [{string(), _}].
 tokenize_test_() ->
     %% Path = os:getenv("PATH"),
     [
@@ -284,6 +288,7 @@ tokenize_test_() ->
                     tokenize("  ABC abc '1234' \"5678\" 'DEF'\"GHI\" '\"JKL \"'  \\$PATH"))}
     ].
 
+-spec check_test_() -> [{string(), _}].
 check_test_() ->
     OptSpecList =
         [
@@ -302,6 +307,7 @@ check_test_() ->
       ?_assertEqual({error, {missing_option_arg, arg}},
                     parse_and_check(OptSpecList, "-a"))}].
 
+-spec format_error_test_() -> [{string(), _}].
 format_error_test_() ->
     OptSpecList =
         [
@@ -351,6 +357,7 @@ format_error_test_() ->
       ?_assertError(_, format_error(OptSpecList, {missing_option_arg, unknown}))}
     ].
 
+-spec utf8_binary_test_() -> [{string(), _}].
 utf8_binary_test_() ->
   OptSpecList = [{utf8, undefined, "utf8", utf8_binary, "UTF-8 arg"}],
   Unicode = [228, 220, 223, 1455],
